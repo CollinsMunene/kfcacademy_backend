@@ -1,0 +1,35 @@
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzYzMDI4NTY5LCJpYXQiOjE3NjMwMjczNjksImp0aSI6IjAwNmM2ZjBkNDQ0MjQ0YzU5N2RmNDEzZWE2ZTA4NTFmIiwidXNlcl9pZCI6IjciLCJyb2xlIjpudWxsfQ.v26Exam0gWVVw9JwGZMzAdj5IK2LVseQ0hqY8ZQuWnM
+johnk@mailinator.com
+abc123@1234
+
+
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Select the appropriate numbers separated by commas and/or spaces, or leave input
+blank to select all options shown (Enter 'c' to cancel): 3
+Requesting a certificate for fpcacademy.devligence.com
+
+Successfully received certificate.
+Certificate is saved at: /etc/letsencrypt/live/fpcacademy.devligence.com/fullchain.pem
+Key is saved at:         /etc/letsencrypt/live/fpcacademy.devligence.com/privkey.pem
+This certificate expires on 2026-02-18.
+These files will be updated when the certificate renews.
+Certbot has set up a scheduled task to automatically renew this certificate in the background.
+
+Deploying certificate
+Successfully deployed certificate for fpcacademy.devligence.com to /etc/nginx/sites-enabled/fpcacademy
+Congratulations! You have successfully enabled HTTPS on https://fpcacademy.devligence.com
+
+
+http://localhost:8080/payment/callback?OrderTrackingId=1d2d8e6a-46d6-40a2-932d-db11775078b0&OrderMerchantReference=order-1ea51a1c-e8d1-4cd7-a47c-7c344bc3b4fc
+
+
+
+
+
+screen
+ngrok http 8000
+Ctrl + A, then D (detach)
+
+screen -r (reattach)
+
+screen -ls

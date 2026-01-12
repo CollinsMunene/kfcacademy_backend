@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Welcome to FPC Kenya Learning Academy</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: linear-gradient(135deg, #f5f7fa 0%, #e8f5e9 100%);
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        color: #2c3e50;
+        width: 100% !important;
+        overflow-x: hidden;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100% !important;
+      }
+      .container {
+        max-width: 650px;
+        margin: 40px auto;
+        background-color: #ffffff;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
+        padding: 40px 30px;
+        text-align: center;
+        position: relative;
+      }
+      .header::after {
+        content: '';
+        position: absolute;
+        bottom: -2px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #81c784 0%, #66bb6a 50%, #43a047 100%);
+      }
+      .header img {
+        max-width: 180px;
+        height: auto;
+        background-color: white;
+        padding: 15px;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+      }
+      .welcome-banner {
+        background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+        padding: 30px 35px;
+        text-align: center;
+        border-bottom: 3px solid #66bb6a;
+      }
+      .welcome-banner h1 {
+        margin: 0;
+        color: #2e7d32;
+        font-size: 28px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
+      .welcome-banner p {
+        margin: 10px 0 0 0;
+        color: #43a047;
+        font-size: 16px;
+        font-weight: 500;
+      }
+      .content {
+        padding: 40px 35px;
+        font-size: 16px;
+        line-height: 1.8;
+        color: #34495e;
+      }
+      .content p {
+        margin: 0 0 18px 0;
+      }
+      .content strong {
+        color: #2e7d32;
+      }
+      .credentials-box {
+        background: linear-gradient(135deg, #f1f8f4 0%, #e8f5e9 100%);
+        border-left: 4px solid #43a047;
+        padding: 25px;
+        margin: 30px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(46, 125, 50, 0.08);
+      }
+      .credentials-box h3 {
+        margin: 0 0 15px 0;
+        color: #2e7d32;
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+      }
+      .credentials-box h3::before {
+        content: '🔑';
+        margin-right: 8px;
+        font-size: 20px;
+      }
+      .credential-item {
+        margin: 12px 0;
+        padding: 12px;
+        background-color: #ffffff;
+        border-radius: 6px;
+        font-family: 'Courier New', monospace;
+        border: 1px solid #c8e6c9;
+      }
+      .credential-label {
+        font-size: 12px;
+        color: #66bb6a;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+      }
+      .credential-value {
+        font-size: 16px;
+        color: #2c3e50;
+        font-weight: 600;
+        word-break: break-all;
+      }
+      .button-container {
+        text-align: center;
+        margin: 35px 0;
+      }
+      .cta-button {
+        display: inline-block;
+        padding: 18px 50px;
+        background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+        color: #ffffff !important;
+        text-decoration: none;
+        border-radius: 30px;
+        font-size: 17px;
+        font-weight: 600;
+        text-align: center;
+        box-shadow: 0 6px 20px rgba(67, 160, 71, 0.35);
+        transition: all 0.3s ease;
+        letter-spacing: 0.5px;
+      }
+      .cta-button:hover {
+        box-shadow: 0 8px 25px rgba(67, 160, 71, 0.45);
+        transform: translateY(-2px);
+      }
+      .security-note {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin: 25px 0;
+        border-radius: 6px;
+        font-size: 14px;
+        color: #856404;
+      }
+      .security-note strong {
+        color: #856404;
+      }
+      .accent-bar {
+        height: 4px;
+        background: linear-gradient(90deg, #2e7d32 0%, #66bb6a 50%, #81c784 100%);
+        margin: 30px 0;
+      }
+      .footer {
+        background-color: #f8f9fa;
+        padding: 30px 35px;
+        text-align: center;
+        font-size: 13px;
+        color: #6c757d;
+        border-top: 1px solid #e9ecef;
+      }
+      .footer-tagline {
+        color: #2e7d32;
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 15px;
+        letter-spacing: 0.5px;
+      }
+      .social-icons {
+        margin: 20px 0;
+      }
+      .social-icons a {
+        display: inline-block;
+        margin: 0 8px;
+        transition: transform 0.2s ease;
+      }
+      .social-icons a:hover {
+        transform: translateY(-2px);
+      }
+      .social-icons img {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+      }
+      .footer-text {
+        margin-top: 15px;
+        line-height: 1.6;
+        color: #7f8c8d;
+      }
+
+      /* Mobile responsiveness */
+      @media only screen and (max-width: 600px) {
+        .container {
+          margin: 20px 10px;
+          border-radius: 12px;
+        }
+        .header {
+          padding: 30px 20px;
+        }
+        .header img {
+          max-width: 150px;
+          padding: 12px;
+        }
+        .welcome-banner {
+          padding: 25px 20px;
+        }
+        .welcome-banner h1 {
+          font-size: 24px;
+        }
+        .welcome-banner p {
+          font-size: 15px;
+        }
+        .content {
+          padding: 30px 25px;
+          font-size: 15px;
+        }
+        .credentials-box {
+          padding: 20px;
+        }
+        .cta-button {
+          padding: 16px 40px;
+          font-size: 16px;
+        }
+        .footer {
+          padding: 25px 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <table role="presentation" width="100%">
+      <tr>
+        <td>
+          <div class="container">
+            <!-- Header with logo -->
+            <div class="header">
+              <a href="https://fpckenya.co.ke" target="_blank">
+                <img
+                  src="https://fpckenya.co.ke/img/logo/logo.png"
+                  alt="FPC Kenya"
+                />
+              </a>
+            </div>
+
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+              <h1>🌾 Welcome to Our Learning Academy! 🌾</h1>
+              <p>Your journey to agricultural excellence starts here</p>
+            </div>
+
+            <!-- Main content -->
+            <div class="content">
+              <p>Hi {{ user }},</p>
+              <p>{{ message1 }}</p>
+              <p>{{ message2 }}</p>
+              
+              <!-- Credentials Box -->
+              <div class="credentials-box">
+                <h3>Your Login Credentials</h3>
+                <div class="credential-item">
+                  <div class="credential-label">Username</div>
+                  <div class="credential-value">{{ username }}</div>
+                </div>
+                <div class="credential-item">
+                  <div class="credential-label">Password</div>
+                  <div class="credential-value">{{ password }}</div>
+                </div>
+              </div>
+
+              <!-- Security Note -->
+              <div class="security-note">
+                <strong>🔒 Security Tip:</strong> For your security, please change your password after your first login. Keep your credentials confidential and never share them with anyone.
+              </div>
+              
+              <div class="button-container">
+                <!--[if mso]><v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{link}}" style="height:55px; v-text-anchor:middle; width:240px;" arcsize="55%" stroke="f" fillcolor="#43a047"><w:anchorlock/><center style="color:#ffffff;"><![endif]-->
+                <a href="{{link}}" target="_blank" class="cta-button">
+                  Proceed to Login
+                </a>
+                <!--[if mso]></center></v:roundrect><![endif]-->
+              </div>
+              
+              <div class="accent-bar"></div>
+              
+              <p>We're excited to have you on board! If you have any questions or need assistance, our support team is here to help.</p>
+              
+              <p>Warm regards,<br /><strong>The FPC Kenya Learning Academy Team</strong></p>
+            </div>
+
+            <!-- Footer -->
+            <div class="footer">
+              <!-- <div class="footer-tagline">Growing Knowledge, Cultivating Excellence</div> -->
+              
+              <div class="social-icons">
+                <a href="#" target="_blank">
+                  <img src="https://cdn-icons-png.flaticon.com/512/174/174857.png" alt="LinkedIn" />
+                </a>
+                <a href="#" target="_blank">
+                  <img src="https://cdn-icons-png.flaticon.com/512/733/733579.png" alt="Twitter" />
+                </a>
+                <a href="#" target="_blank">
+                  <img src="https://cdn-icons-png.flaticon.com/512/732/732200.png" alt="Email" />
+                </a>
+              </div>
+              
+              <p class="footer-text">
+                Please do not reply to this email.<br />
+                FPC Kenya Learning Academy<br />
+                Nairobi, Kenya
+              </p>
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

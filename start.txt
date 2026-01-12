@@ -1,0 +1,200 @@
+# TODO: Insert first role
+INSERT INTO role (
+    guid,
+    name,
+    created_at,
+    created_by,
+    updated_at
+) VALUES (
+    '46ba718e-969b-4703-b401-eedd5cbdde87',
+    'ADMIN',
+    '2025-02-24T12:00:00Z',
+    'admin',
+    '2025-02-24T12:00:00Z'
+);
+INSERT INTO role (
+    guid,
+    name,
+    created_at,
+    created_by,
+    updated_at
+) VALUES (
+    '1a98b3d4-0083-4cf6-b14f-e44aafd55213',
+    'INSTRUCTOR',
+    '2025-02-24T12:00:00Z',
+    'admin',
+    '2025-02-24T12:00:00Z'
+);
+INSERT INTO role (
+    guid,
+    name,
+    created_at,
+    created_by,
+    updated_at
+) VALUES (
+    'b53359d2-f269-4f4e-8321-8ee3a4bc96d3',
+    'USER',
+    '2025-02-24T12:00:00Z',
+    'admin',
+    '2025-02-24T12:00:00Z'
+);
+
+# TODO: Add Permission
+INSERT INTO permission (
+    guid,
+    name,
+    created_at,
+    created_by,
+	updated_at
+) VALUES (
+    'b53359d2-f269-4f4e-8321-8ee3a4bc96d3',
+    'all_access',
+    '2025-02-24T12:00:00Z',
+    'admin',
+	'2025-02-24T12:00:00Z'
+);
+
+# TODO: Add platform_standards
+INSERT INTO platform_standards (
+    guid,
+    name,
+    is_active,
+    created_at,
+    created_by,
+	updated_at
+) VALUES (
+    'b53359d2-f269-4f4e-8321-8ee3a4bc96d3',
+    'ISMS',
+    true,
+    '2025-02-24T12:00:00Z',
+    'admin',
+	'2025-02-24T12:00:00Z'
+);
+
+INSERT INTO platform_standards (
+    guid,
+    name,
+    is_active,
+    created_at,
+    created_by,
+	updated_at
+) VALUES (
+    '1a98b3d4-0083-4cf6-b14f-e44aafd55213',
+    'DPM',
+    true,
+    '2025-02-24T12:00:00Z',
+    'admin',
+	'2025-02-24T12:00:00Z'
+);
+
+# TODO: Insert institution
+INSERT INTO institution (
+  guid,
+  name, 
+  tagline,
+  description, 
+  institution_type_id_id, 
+  country, 
+  state, 
+  industry, 
+  contact_person_names, 
+  contact_person_phone_number, 
+  primary_email_address,
+  primary_phone_number,
+  application_date,
+  approval_date,
+  is_approved,
+  is_test,
+  approved_by,
+  created_at, 
+  created_by, 
+  updated_at
+) VALUES (
+  '1a98b3d4-0083-4cf6-b14f-e44aafd55213',
+  'Devligence Limited',
+  'Innovating Africa',                      -- Optional tagline
+  'Parent Super Company', 
+  1,                                       -- assuming institution_type_id=1 exists
+  'Kenya', 
+  'Nairobi', 
+  'Technology', 
+  'Collins Munene', 
+  '254715804742', 
+  'collinshillary1@gmail.com',
+  '254715804742',
+  CURRENT_DATE,
+  NULL,                                    -- No approval yet
+  true,
+  false,
+  'self',
+  NOW(), 
+  'self', 
+  NOW()
+);
+
+
+INSERT INTO org_department (
+    guid,
+    institution_id_id,
+    name,
+    location,
+    created_at,
+    created_by,
+	updated_at
+) VALUES (
+    '64bfa389-54eb-4a24-afa8-f8f4e78f1813',
+    '1',
+    'Management',
+    'Karen Landmark',
+    '2025-02-24T12:00:00Z',
+    'admin',
+	'2025-02-24T12:00:00Z'
+);
+
+INSERT INTO org_job_title (
+    guid,
+    institution_id_id,
+    org_department_id_id,
+    name,
+    created_at,
+    created_by,
+	updated_at
+) VALUES (
+    '64bfa389-54eb-4a24-afa8-f8f4e78f1813',
+    '1',
+    '1',
+    'CEO',
+    '2025-02-24T12:00:00Z',
+    'admin',
+	'2025-02-24T12:00:00Z'
+);
+
+# TODO: Insert first user (create super admin)
+
+
+INSERT INTO users_institution_id (users_id, institution_id)
+VALUES (1, 1);
+
+INSERT INTO users_institution_legal_entity_id
+ (users_id, institutionlegalentity_id)
+VALUES (1, 1);
+
+INSERT INTO role_permission (role_id, permission_id)
+SELECT 5, p.id
+FROM permission p
+WHERE p.id NOT IN (
+  SELECT permission_id 
+  FROM role_permission 
+  WHERE role_id = 5
+);
+
+
+SELECT id, name 
+FROM data_inventory                   
+WHERE id IN (65, 66, 67, 70, 71, 72, 23,73);
+
+SELECT id, name 
+FROM data_protection_impact_assessment
+WHERE name IN (                             
+    SELECT name FROM data_inventory WHERE id IN (65, 66, 67, 70, 71, 72, 23,73)
+);
