@@ -29,7 +29,7 @@ def send_email(self, subject, context, template, to_email):
             # message:
             body="",
             # from:
-            from_email='"{from_name}" <{from_email}>'.format(from_name='FPC Academy', from_email="fpc@devligence.com"),
+            from_email='"{from_name}" <{from_email}>'.format(from_name='KFC Academy', from_email="uat@devligence.com"),
             # to:
             to=[to_email],
             connection=connection

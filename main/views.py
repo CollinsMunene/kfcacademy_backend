@@ -124,7 +124,7 @@ class UserRegister(FreeAuthView):
                 message1 = f"You have been added to the FPC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
-                link = 'https://fpc.academy/login'
+                link = 'https://kfc-frontend-wine.vercel.app/login'
 
                 send_email.delay(
                     subject=f"Congratulations! Welcome to FPC Academy Platform",
@@ -232,7 +232,7 @@ class AdminCreateUser(ProtectedAuthView):
                 message1 = f"You have been added to the FPC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
-                link = 'https://fpc.academy/login'
+                link = 'https://kfc-frontend-wine.vercel.app/login'
 
                 send_email.delay(
                     subject=f"Congratulations! Welcome to FPC Academy Platform",
@@ -320,7 +320,7 @@ class AdminReactivateUser(ProtectedAuthView):
                     "message3": "Welcome back to the team.",
                     "username": user.email,
                     "password": initial_password,
-                    "link": 'https://fpc.com/login'
+                    "link": 'https://kfc-frontend-wine.vercel.app/login'
                 },
                 template='welcome_email.html',
                 to_email=user.email

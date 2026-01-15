@@ -311,13 +311,13 @@ DJANGO_REST_PASSWORDRESET_NO_INFORMATION_LEAKAG = True
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 
-EMAIL_HOST = "mail.fpckenya.co.ke"
+EMAIL_HOST = "mail.devligence.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "noreply@fpckenya.co.ke"
-EMAIL_HOST_PASSWORD = "$AWlI;9xW+{[#YZX"
+EMAIL_HOST_USER = "uat@devligence.com"
+EMAIL_HOST_PASSWORD = "Zcr?Fx%1?5]gX+E^"
 EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True  # ⚠️ must be False with 465
-DEFAULT_FROM_EMAIL = '"KFC Academy" <kfc@kfc.co.ke>'
+DEFAULT_FROM_EMAIL = '"KFC Academy" <uat@devligence.com>'
 
 
 # Default primary key field type
