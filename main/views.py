@@ -97,9 +97,9 @@ class UserRegister(FreeAuthView):
             # Username & password generation
             username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
             request.data['username'] = username
-            initial_password = ";4yGcR56O{|1"
-            print(initial_password)
-            request.data['password'] = initial_password
+            # initial_password = ";4yGcR56O{|1"
+            # print(initial_password)
+            # request.data['password'] = request.data['password']
             request.data['is_first_time_login'] = True
 
             serializer = UserSerializer(data=request.data)
@@ -121,21 +121,21 @@ class UserRegister(FreeAuthView):
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
-                message1 = f"You have been added to the FPC Academy Platform."
+                message1 = f"You have been added to the KFC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
                 link = 'https://kfc-frontend-wine.vercel.app/login'
 
                 send_email.delay(
-                    subject=f"Congratulations! Welcome to FPC Academy Platform",
+                    subject=f"Congratulations! Welcome to KFC Academy Platform",
                     context={
                         "user": request.data.get('first_name'),
-                        "org": "FPC Academy",
+                        "org": "KFC Academy",
                         "message1": message1,
                         "message2": message2,
                         "message3": message3,
                         "username": request.data.get('email'),
-                        "password": initial_password,
+                        "password": "[Password you set during registration]",
                         "link": link
                     },
                     template='welcome_email.html',
@@ -229,16 +229,16 @@ class AdminCreateUser(ProtectedAuthView):
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
-                message1 = f"You have been added to the FPC Academy Platform."
+                message1 = f"You have been added to the KFC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
                 link = 'https://kfc-frontend-wine.vercel.app/login'
 
                 send_email.delay(
-                    subject=f"Congratulations! Welcome to FPC Academy Platform",
+                    subject=f"Congratulations! Welcome to KFC Academy Platform",
                     context={
                         "user": request.data.get('first_name'),
-                        "org": "FPC Academy",
+                        "org": "KFC Academy",
                         "message1": message1,
                         "message2": message2,
                         "message3": message3,
@@ -312,10 +312,10 @@ class AdminReactivateUser(ProtectedAuthView):
             user.save()
 
             send_email.delay(
-                subject="Your FPC Academy Account has been Reactivated",
+                subject="Your KFC Academy Account has been Reactivated",
                 context={
                     "user": user.first_name,
-                    "message1": "Your account on the FPC Academy Platform has been Activated.",
+                    "message1": "Your account on the KFC Academy Platform has been Activated.",
                     "message2": "If you did not request this, please contact support immediately.",
                     "message3": "Welcome back to the team.",
                     "username": user.email,
