@@ -230,7 +230,7 @@ if DEBUG:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'fpc_development'),
+            'NAME': os.environ.get('POSTGRES_DB', 'kfc_development'),
             'USER': os.environ.get('POSTGRES_USER', 'devuser'),
             'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'devuser'),
             'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),  # Use default if not set
@@ -317,7 +317,7 @@ EMAIL_HOST_USER = "noreply@fpckenya.co.ke"
 EMAIL_HOST_PASSWORD = "$AWlI;9xW+{[#YZX"
 EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True  # ⚠️ must be False with 465
-DEFAULT_FROM_EMAIL = '"FPC Academy" <fpc@fpckenya.co.ke>'
+DEFAULT_FROM_EMAIL = '"KFC Academy" <kfc@kfc.co.ke>'
 
 
 # Default primary key field type

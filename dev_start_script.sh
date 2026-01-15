@@ -1,7 +1,7 @@
 #!/bin/bash
 export DEBUG=True
 fuser -k 8000/tcp
-cd /home/eliud/apps/fpc/
+cd /root/kfc/
 # rm -r output.out
 # rm -r django_debug.log
 # rm -r venv
