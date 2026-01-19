@@ -48,10 +48,10 @@ if DEBUG == True:
     ]
 else:
     ALLOWED_HOSTS = [
-        'api.fpckenya.co.ke',
-        'fpckenya.co.ke',
+        'api.kenyaflowercouncil.org',
+        'kenyaflowercouncil.org',
         '8a6132f56240.ngrok-free.app',
-        'academy.fpckenya.co.ke',
+        'academy.kenyaflowercouncil.org',
         '65.109.11.105'
     ]
 
@@ -101,12 +101,12 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5175',    # Frontend port
     'http://127.0.0.1:5173',    # Vite default port
-    'http://fpckenya.co.ke',
-    'http://academy.fpckenya.co.ke'
+    'http://kenyaflowercouncil.org',
+    'http://academy.kenyaflowercouncil.org'
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r'^https://.*\.fpckenya\.co.ke$',
+    r'^https://.*\.kenyaflowercouncil\.org$',
     r'^https://.*\.vercel\.app$',
     r'^http://localhost:[3-9]\d{3}$',      # Allow localhost with ports 3000-9999
     r'^http://127\.0\.0\.1:[3-9]\d{3}$',   # Allow 127.0.0.1 with ports 3000-9999
