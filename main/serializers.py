@@ -97,8 +97,9 @@ class UserSerializer(serializers.ModelSerializer):
         if value:
             # Basic phone number validation
             cleaned = re.sub(r'[^\d+]', '', value)
-            if not re.match(r'^\+?[\d\s\-\(\)]{7,15}$', value):
+            if not re.match(r'^\+?[\d\s\-\(\)]{7,15}$', cleaned):
                 raise serializers.ValidationError("Invalid phone number format")
+            return cleaned  # Ensure the cleaned phone number is returned as a string
         return value
     
     def validate_role(self, value):
