@@ -108,16 +108,19 @@ class UserRegister(FreeAuthView):
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image = self.create_profile_image(user_initials)
+                image_buffer = self.create_profile_image(user_initials)
                 img_name = f"{user_initials}.jpg"
-                user.image.save(img_name, InMemoryUploadedFile(
-                    image,
-                    None,
+                user.image.save(
                     img_name,
-                    'image/jpeg',
-                    image.tell,
-                    None
-                ))
+                    InMemoryUploadedFile(
+                        image_buffer,
+                        None,
+                        img_name,
+                        'image/jpeg',
+                        image_buffer.getbuffer().nbytes,  # ✅ CORRECT SIZE
+                        None
+                    )
+                )
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
@@ -165,7 +168,7 @@ class UserRegister(FreeAuthView):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
 
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
+        font_path = os.path.join(BASE_DIR, "KFCAcademy/static/MontserratBlack.ttf")
         font = ImageFont.truetype(font_path, 350)
 
         draw = ImageDraw.Draw(img)
@@ -175,8 +178,10 @@ class UserRegister(FreeAuthView):
         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
 
         buffer = BytesIO()
-        img.save(fp=buffer, format='JPEG')
-        return ContentFile(buffer.getvalue())
+        img.save(buffer, format='JPEG')
+        buffer.seek(0)  # 🔴 VERY IMPORTANT
+
+        return buffer
     
 class AdminCreateUser(ProtectedAuthView):
     serializer_class = UserSerializer
@@ -216,14 +221,14 @@ class AdminCreateUser(ProtectedAuthView):
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image = self.create_profile_image(user_initials)
+                image_buffer = self.create_profile_image(user_initials)
                 img_name = f"{user_initials}.jpg"
                 user.image.save(img_name, InMemoryUploadedFile(
-                    image,
+                    image_buffer,
                     None,
                     img_name,
                     'image/jpeg',
-                    image.tell,
+                    image_buffer.getbuffer().nbytes,
                     None
                 ))
 
@@ -273,7 +278,7 @@ class AdminCreateUser(ProtectedAuthView):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
 
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
+        font_path = os.path.join(BASE_DIR, "KFCAcademy/static/MontserratBlack.ttf")
         font = ImageFont.truetype(font_path, 350)
 
         draw = ImageDraw.Draw(img)
@@ -283,8 +288,11 @@ class AdminCreateUser(ProtectedAuthView):
         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
 
         buffer = BytesIO()
-        img.save(fp=buffer, format='JPEG')
-        return ContentFile(buffer.getvalue())
+        img.save(buffer, format='JPEG')
+        buffer.seek(0)  # 🔴 VERY IMPORTANT
+
+        return buffer
+
 
 
 class AdminReactivateUser(ProtectedAuthView):
