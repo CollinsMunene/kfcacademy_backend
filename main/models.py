@@ -190,6 +190,7 @@ class Courses(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     title = models.CharField(max_length=200,blank=False,null=False)
     description = models.TextField(blank=True,null=True)
+    category = models.CharField(max_length=200,blank=True,null=True)
     image = models.ImageField(default='default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
     tags = ArrayField(models.CharField(max_length=100), blank=True, default=list)
     expertise_level = models.CharField(max_length=100,blank=True,null=True)
