@@ -88,6 +88,7 @@ def get_default_role():
         pass
     return None
 
+
 class Users(AbstractUser):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     image = models.ImageField(default='default.png', blank=True, null=True, upload_to=user_upload_to)
@@ -191,7 +192,7 @@ class Courses(models.Model):
     title = models.CharField(max_length=200,blank=False,null=False)
     description = models.TextField(blank=True,null=True)
     category = models.CharField(max_length=200,blank=True,null=True)
-    image = models.ImageField(default='default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
+    image = models.ImageField(default='course_image/default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
     tags = ArrayField(models.CharField(max_length=100), blank=True, default=list)
     expertise_level = models.CharField(max_length=100,blank=True,null=True)
     prerequisites = ArrayField(models.CharField(max_length=100), blank=True, default=list)
