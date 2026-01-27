@@ -81,6 +81,8 @@ class PreTokenObtainPairView(FreeAuthView):
                 "updated_at": timezone.now()
             }
         )
+        print("sending otp", otp)
+        print("to email", user.email)
 
         send_email.delay(
             subject="Sign In OTP Notification - " + otp,
