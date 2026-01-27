@@ -97,9 +97,9 @@ class UserRegister(FreeAuthView):
             # Username & password generation
             username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
             request.data['username'] = username
-            initial_password = ";4yGcR56O{|1"
-            print(initial_password)
-            request.data['password'] = initial_password
+            # initial_password = ";4yGcR56O{|1"
+            # print(initial_password)
+            # request.data['password'] = request.data['password']
             request.data['is_first_time_login'] = True
 
             serializer = UserSerializer(data=request.data)
@@ -108,34 +108,37 @@ class UserRegister(FreeAuthView):
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image = self.create_profile_image(user_initials)
+                image_buffer = self.create_profile_image(user_initials)
                 img_name = f"{user_initials}.jpg"
-                user.image.save(img_name, InMemoryUploadedFile(
-                    image,
-                    None,
+                user.image.save(
                     img_name,
-                    'image/jpeg',
-                    image.tell,
-                    None
-                ))
+                    InMemoryUploadedFile(
+                        image_buffer,
+                        None,
+                        img_name,
+                        'image/jpeg',
+                        image_buffer.getbuffer().nbytes,  # ✅ CORRECT SIZE
+                        None
+                    )
+                )
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
-                message1 = f"You have been added to the FPC Academy Platform."
+                message1 = f"You have been added to the KFC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
-                link = 'https://fpc.academy/login'
+                link = 'https://kfc-frontend-wine.vercel.app/login'
 
                 send_email.delay(
-                    subject=f"Congratulations! Welcome to FPC Academy Platform",
+                    subject=f"Congratulations! Welcome to KFC Academy Platform",
                     context={
                         "user": request.data.get('first_name'),
-                        "org": "FPC Academy",
+                        "org": "KFC Academy",
                         "message1": message1,
                         "message2": message2,
                         "message3": message3,
                         "username": request.data.get('email'),
-                        "password": initial_password,
+                        "password": "[Password you set during registration]",
                         "link": link
                     },
                     template='welcome_email.html',
@@ -165,7 +168,7 @@ class UserRegister(FreeAuthView):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
 
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
+        font_path = os.path.join(BASE_DIR, "KFCAcademy/static/MontserratBlack.ttf")
         font = ImageFont.truetype(font_path, 350)
 
         draw = ImageDraw.Draw(img)
@@ -175,8 +178,10 @@ class UserRegister(FreeAuthView):
         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
 
         buffer = BytesIO()
-        img.save(fp=buffer, format='JPEG')
-        return ContentFile(buffer.getvalue())
+        img.save(buffer, format='JPEG')
+        buffer.seek(0)  # 🔴 VERY IMPORTANT
+
+        return buffer
     
 class AdminCreateUser(ProtectedAuthView):
     serializer_class = UserSerializer
@@ -216,29 +221,29 @@ class AdminCreateUser(ProtectedAuthView):
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image = self.create_profile_image(user_initials)
+                image_buffer = self.create_profile_image(user_initials)
                 img_name = f"{user_initials}.jpg"
                 user.image.save(img_name, InMemoryUploadedFile(
-                    image,
+                    image_buffer,
                     None,
                     img_name,
                     'image/jpeg',
-                    image.tell,
+                    image_buffer.getbuffer().nbytes,
                     None
                 ))
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
-                message1 = f"You have been added to the FPC Academy Platform."
+                message1 = f"You have been added to the KFC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
-                link = 'https://fpc.academy/login'
+                link = 'https://kfc-frontend-wine.vercel.app/login'
 
                 send_email.delay(
-                    subject=f"Congratulations! Welcome to FPC Academy Platform",
+                    subject=f"Congratulations! Welcome to KFC Academy Platform",
                     context={
                         "user": request.data.get('first_name'),
-                        "org": "FPC Academy",
+                        "org": "KFC Academy",
                         "message1": message1,
                         "message2": message2,
                         "message3": message3,
@@ -273,7 +278,7 @@ class AdminCreateUser(ProtectedAuthView):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
 
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
+        font_path = os.path.join(BASE_DIR, "KFCAcademy/static/MontserratBlack.ttf")
         font = ImageFont.truetype(font_path, 350)
 
         draw = ImageDraw.Draw(img)
@@ -283,8 +288,11 @@ class AdminCreateUser(ProtectedAuthView):
         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
 
         buffer = BytesIO()
-        img.save(fp=buffer, format='JPEG')
-        return ContentFile(buffer.getvalue())
+        img.save(buffer, format='JPEG')
+        buffer.seek(0)  # 🔴 VERY IMPORTANT
+
+        return buffer
+
 
 
 class AdminReactivateUser(ProtectedAuthView):
@@ -312,15 +320,15 @@ class AdminReactivateUser(ProtectedAuthView):
             user.save()
 
             send_email.delay(
-                subject="Your FPC Academy Account has been Reactivated",
+                subject="Your KFC Academy Account has been Reactivated",
                 context={
                     "user": user.first_name,
-                    "message1": "Your account on the FPC Academy Platform has been Activated.",
+                    "message1": "Your account on the KFC Academy Platform has been Activated.",
                     "message2": "If you did not request this, please contact support immediately.",
                     "message3": "Welcome back to the team.",
                     "username": user.email,
                     "password": initial_password,
-                    "link": 'https://fpc.com/login'
+                    "link": 'https://kfc-frontend-wine.vercel.app/login'
                 },
                 template='welcome_email.html',
                 to_email=user.email

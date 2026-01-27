@@ -44,7 +44,7 @@ def serialize_value(val):
                     
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
-    email_plaintext_message = "{}?token={}".format("https://fpc-academy-frontend-phi.vercel.app/reset-password/confirm", reset_password_token.key)
+    email_plaintext_message = "{}?token={}".format("https://kfc-frontend-wine.vercel.app/reset-password/confirm", reset_password_token.key)
     message = "Hello "+ str(reset_password_token.user.email)+ ",You have requested a password reset for your account. Please click the button below. The link is valid for one Hour only. If you did not request a password reset, please ignore this email. Thank you."
     send_email.delay(
         subject="Password Reset for {title}".format(title="FPC"),
@@ -83,7 +83,7 @@ def post_password_reset(sender, user,*args, **kwargs):
                         "message3":"",
                         "username":user.email,
                         "password":"",
-                        "link":"https://fpc-academy-frontend-phi.vercel.app/login"
+                        "link":"https://kfc-frontend-wine.vercel.app/login"
                     },
         template="email_with_button.html",
         to_email=user.email

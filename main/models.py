@@ -83,10 +83,11 @@ def user_upload_to(instance, filename):
 def get_default_role():
     try:
         if "role" in connection.introspection.table_names():
-            return Role.objects.get(name="USER").guid
+            return Role.objects.get(name="USER")
     except:
         pass
     return None
+
 
 class Users(AbstractUser):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
@@ -190,7 +191,8 @@ class Courses(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     title = models.CharField(max_length=200,blank=False,null=False)
     description = models.TextField(blank=True,null=True)
-    image = models.ImageField(default='default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
+    category = models.CharField(max_length=200,blank=True,null=True)
+    image = models.ImageField(default='course_image/default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
     tags = ArrayField(models.CharField(max_length=100), blank=True, default=list)
     expertise_level = models.CharField(max_length=100,blank=True,null=True)
     prerequisites = ArrayField(models.CharField(max_length=100), blank=True, default=list)

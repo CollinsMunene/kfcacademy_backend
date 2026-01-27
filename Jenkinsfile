@@ -16,7 +16,7 @@ pipeline{
                 script {
                     // Define the paths
                     def workspacePath = "${WORKSPACE}/"
-                    def targetPath = "/home/eliud/apps/fpc/"
+                    def targetPath = "/root/kfc/"
                     def branch = sh(script: "git name-rev --name-only HEAD", returnStdout: true).trim()
                     branch = branch.replaceAll(/^remotes\\//, "").replaceAll(/^origin\\//, "")
                     echo "Current branch: ${branch}"

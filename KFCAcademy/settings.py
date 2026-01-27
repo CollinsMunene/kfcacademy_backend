@@ -48,10 +48,10 @@ if DEBUG == True:
     ]
 else:
     ALLOWED_HOSTS = [
-        'api.fpckenya.co.ke',
-        'fpckenya.co.ke',
+        'api.kenyaflowercouncil.org',
+        'kenyaflowercouncil.org',
         '8a6132f56240.ngrok-free.app',
-        'academy.fpckenya.co.ke',
+        'academy.kenyaflowercouncil.org',
         '65.109.11.105'
     ]
 
@@ -101,12 +101,12 @@ CORS_ALLOWED_ORIGINS = [
     'http://127.0.0.1:3000',
     'http://127.0.0.1:5175',    # Frontend port
     'http://127.0.0.1:5173',    # Vite default port
-    'http://fpckenya.co.ke',
-    'http://academy.fpckenya.co.ke'
+    'http://kenyaflowercouncil.org',
+    'http://academy.kenyaflowercouncil.org'
 ]
 
 CORS_ALLOWED_ORIGIN_REGEXES = [
-    r'^https://.*\.fpckenya\.co.ke$',
+    r'^https://.*\.kenyaflowercouncil\.org$',
     r'^https://.*\.vercel\.app$',
     r'^http://localhost:[3-9]\d{3}$',      # Allow localhost with ports 3000-9999
     r'^http://127\.0\.0\.1:[3-9]\d{3}$',   # Allow 127.0.0.1 with ports 3000-9999
@@ -230,7 +230,7 @@ if DEBUG:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'fpc_development'),
+            'NAME': os.environ.get('POSTGRES_DB', 'kfc_development'),
             'USER': os.environ.get('POSTGRES_USER', 'devuser'),
             'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'devuser'),
             'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),  # Use default if not set
@@ -311,13 +311,13 @@ DJANGO_REST_PASSWORDRESET_NO_INFORMATION_LEAKAG = True
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 
-EMAIL_HOST = "mail.fpckenya.co.ke"
+EMAIL_HOST = "mail.devligence.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "noreply@fpckenya.co.ke"
-EMAIL_HOST_PASSWORD = "$AWlI;9xW+{[#YZX"
+EMAIL_HOST_USER = "uat@devligence.com"
+EMAIL_HOST_PASSWORD = "Zcr?Fx%1?5]gX+E^"
 EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True  # ⚠️ must be False with 465
-DEFAULT_FROM_EMAIL = '"FPC Academy" <fpc@fpckenya.co.ke>'
+DEFAULT_FROM_EMAIL = '"KFC Academy" <uat@devligence.com>'
 
 
 # Default primary key field type
