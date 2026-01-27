@@ -312,11 +312,11 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 
 EMAIL_HOST = "mail.devligence.com"
-EMAIL_PORT = 465
+EMAIL_PORT = 587
 EMAIL_HOST_USER = "uat@devligence.com"
 EMAIL_HOST_PASSWORD = "Zcr?Fx%1?5]gX+E^"
-EMAIL_USE_SSL = True
-EMAIL_USE_TLS = False  # ⚠️ must be False with 465
+EMAIL_USE_SSL = False
+EMAIL_USE_TLS = True  # ⚠️ must be False with 465
 DEFAULT_FROM_EMAIL = '"KFC Academy" <uat@devligence.com>'
 
 
