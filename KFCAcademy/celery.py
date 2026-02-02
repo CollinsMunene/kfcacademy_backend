@@ -13,11 +13,14 @@ app.autodiscover_tasks()
 # app.conf.enable_utc = False
 # app.conf.timezone = 'Africa/Nairobi'
 
-app.conf.timezone = 'Africa/Nairobi'
-app.conf.enable_utc = True
 
 if settings.DEBUG:
     broker_url = "redis://localhost:6379/0"
+    app.conf.timezone = 'Africa/Nairobi'
+    app.conf.enable_utc = True
+    app.conf.task_routes = {
+        'KFCAcademy.tasks.*': {'queue': 'kfc_queue'},
+    }
 else:
     broker_url='redis://:StrongSudo483@localhost:6379/0'
     
