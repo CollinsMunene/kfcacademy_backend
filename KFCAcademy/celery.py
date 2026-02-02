@@ -21,6 +21,7 @@ if settings.DEBUG:
     app.conf.task_routes = {
         'KFCAcademy.tasks.*': {'queue': 'kfc_queue'},
     }
+    app.conf.task_default_queue = 'kfc_queue'
 else:
     broker_url='redis://:StrongSudo483@localhost:6379/0'
     
