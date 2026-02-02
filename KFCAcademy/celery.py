@@ -10,8 +10,11 @@ app = Celery('KFCAcademy')
 app.config_from_object('django.conf:settings', namespace='CELERY')
 app.autodiscover_tasks()
 
-app.conf.enable_utc = False
+# app.conf.enable_utc = False
+# app.conf.timezone = 'Africa/Nairobi'
+
 app.conf.timezone = 'Africa/Nairobi'
+app.conf.enable_utc = True
 
 if settings.DEBUG:
     broker_url = "redis://localhost:6379/0"
