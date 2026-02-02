@@ -18,5 +18,5 @@ rm -r django_debug.log
 # sudo chmod -R 755 /var/www/FPCAcademy_backend/staticfiles
 python3 manage.py makemigrations  && python3 manage.py migrate
 ps aux | grep '[c]elery' | grep '/root/kfc/' | awk '{print $2}' | xargs -r kill -9
-celery -A KFCAcademy worker --loglevel=info  -n kfc@%h --detach 
+celery -A KFCAcademy worker --loglevel=info  -n kfc@%h -Q kfc_queue  --detach 
 nohup env DEBUG=True gunicorn --workers 3 --timeout 1800 --bind 0:8005 KFCAcademy.wsgi:application >> output.out &
