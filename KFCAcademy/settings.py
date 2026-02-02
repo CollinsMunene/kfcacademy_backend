@@ -319,7 +319,6 @@ EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True  # ⚠️ must be False with 465
 DEFAULT_FROM_EMAIL = '"KFC Academy" <uat@devligence.com>'
 
-
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
