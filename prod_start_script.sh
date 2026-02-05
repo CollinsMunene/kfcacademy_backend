@@ -4,14 +4,14 @@ fuser -k 8000/tcp
 cd /home/lina/apps/kfc
 rm  output.out
 rm  django_debug.log
-rm -r venv
-python3 -m venv venv
+# rm -r venv
+# python3 -m venv venv
 . venv/bin/activate
-pip3 install -r requirements.txt
-python3 -m pip install -U pip setuptools
-systemctl stop celery
-pkill -f 'celery'
-systemctl start celery
+# pip3 install -r requirements.txt
+# python3 -m pip install -U pip setuptools
+# systemctl stop celery
+# pkill -f 'celery'
+# systemctl start celery
 # python3 manage.py collectstatic --noinput
 # sudo cp  -r /root/kfc/staticfiles/* /var/www/kfc/staticfiles/
 # sudo chown -R www-data:www-data /var/www/kfc/staticfiles

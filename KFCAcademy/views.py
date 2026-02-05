@@ -22,6 +22,16 @@ from KFCAcademy.tasks import send_email
 def generate_otp():
     return str(secrets.randbelow(9000) + 1000) 
 
+class HealthCheckView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, *args, **kwargs):
+        return Response({
+            "status": "ok",
+            "message": "Service is healthy",
+            "data": []
+        }, status=HTTP_200_OK)
+    
 class ReadOnly(BasePermission):
     def has_permission(self, request, view):
         return request.method in SAFE_METHODS
