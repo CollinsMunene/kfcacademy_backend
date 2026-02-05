@@ -16,11 +16,14 @@ pipeline{
                 script {
                     // Define the paths
                     def workspacePath = "${WORKSPACE}/"
-                    def targetPath = "/root/kfc/"
+                    // def targetPath = "/root/kfc/"
                     def branch = sh(script: "git name-rev --name-only HEAD", returnStdout: true).trim()
                     branch = branch.replaceAll(/^remotes\\//, "").replaceAll(/^origin\\//, "")
                     echo "Current branch: ${branch}"
 
+            
+
+                    def targetPath =  (branch == "master") ? "/home/lina/apps/kfc/" : "/root/kfc/"
                     def scriptFile = (branch == "master") ? "prod_start_script.sh" : "dev_start_script.sh"
                     def scriptPath = "${targetPath}${scriptFile}"
 

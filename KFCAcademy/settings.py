@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
+import logging
 import django
 import os
 import django.db.models.signals
@@ -21,6 +22,13 @@ from datetime import timedelta
 from sentry_sdk.integrations.django import DjangoIntegration
 from sentry_sdk.integrations.logging import LoggingIntegration
 
+from KFCAcademy.logging_formatters import NairobiGELFHandler
+GRAYLOG_HOST = '188.245.201.135'
+GRAYLOG_PORT = 12201 
+
+logger = logging.getLogger("main.middleware")
+gelf_handler = NairobiGELFHandler(GRAYLOG_HOST, GRAYLOG_PORT,extra_fields=True)
+logger.addHandler(gelf_handler)
 
 
 
@@ -43,14 +51,12 @@ if DEBUG == True:
     ALLOWED_HOSTS = [
         'localhost',
         '127.0.0.1',
-        '8a6132f56240.ngrok-free.app',
         '*',  # Allow all hosts in development for easier testing
     ]
 else:
     ALLOWED_HOSTS = [
         'api.kenyaflowercouncil.org',
         'kenyaflowercouncil.org',
-        '8a6132f56240.ngrok-free.app',
         'academy.kenyaflowercouncil.org',
         '65.109.11.105'
     ]
@@ -88,6 +94,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'main.middleware.CurrentUserLoggingMiddleware',
+    'main.middleware.RequestTimingMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 
@@ -241,9 +248,9 @@ else:
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.environ.get('POSTGRES_DB', 'fpc_prod'),
-            'USER': os.environ.get('POSTGRES_USER', 'fpcmain'),
-            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', '6lmX44pBd2J2'),
+            'NAME': os.environ.get('POSTGRES_DB', 'kfc_prod'),
+            'USER': os.environ.get('POSTGRES_USER', 'kfcmain'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'fc0TT2rkeTK7'),
             'HOST': os.environ.get('POSTGRES_HOST', '127.0.0.1'),  # Use default if not set
             'PORT': os.environ.get('POSTGRES_PORT', '5432'),
         }
@@ -298,6 +305,8 @@ MEDIA_ROOT =  os.path.join(BASE_DIR, 'media')
 
 # MEDIA_ROOT = '/var/www/compliance_tool_media'
 MEDIA_URL = '/media/'
+MEDIA_ROOT = '/home/lina/apps/kfc/media/'
+
 
 
 AUTH_USER_MODEL = 'main.Users'
@@ -331,9 +340,17 @@ LOGGING = {
         'default': {
             'format': '[%(asctime)s][%(levelname)s] %(process)d %(thread)d '
                       '%(name)s %(filename)s:%(funcName)s:%(lineno)d | %(message)s',
+            'datefmt': '%Y-%m-%d %H:%M:%S',
         },
     },
     'handlers': {
+        'graylog': {
+            'level': 'INFO',
+            '()': 'KFCAcademy.logging_formatters.NairobiGELFHandler',  # Use custom handler
+            'host': GRAYLOG_HOST,
+            'port': GRAYLOG_PORT,
+            # Remove 'formatter': 'json' - graypy handles its own formatting
+        },
         'sentry': {
             'level': 'WARNING',
             'class': 'sentry_sdk.integrations.logging.EventHandler',
@@ -347,26 +364,32 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': 'django_debug.log',  # Your log file path
+            'filename': 'django_debug.log',
         },
     },
     'root': {
         'level': 'INFO',
-        'handlers': ['file','sentry','console']
+        'handlers': ['file', 'graylog', 'sentry', 'console']
     },
     'loggers': {
         'django.request': {
-            'handlers': ['file','sentry', 'console'],
+            'handlers': ['file', 'graylog', 'sentry', 'console'],
             'level': 'ERROR',
             'propagate': False,
         },
         'django': {
-            'handlers': ['file','sentry','console'],
+            'handlers': ['file', 'graylog', 'sentry', 'console'],
             'level': 'INFO',
             'propagate': True,
         },
+        'heartbeat': {
+            'handlers': ['graylog'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
+
 
 sentry_logging = LoggingIntegration(
     level="ERROR",  # Capture warnings and errors
