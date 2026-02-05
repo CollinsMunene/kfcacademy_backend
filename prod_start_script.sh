@@ -1,7 +1,7 @@
 #!/bin/bash
 export DEBUG=False
 fuser -k 8000/tcp
-cd /apps/kfc/
+cd apps/kfc/
 rm  output.out
 rm  django_debug.log
 rm -r venv
