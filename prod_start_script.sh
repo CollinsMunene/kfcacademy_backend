@@ -19,7 +19,6 @@ systemctl start celery
 # python manage.py makemigrations --merge
 # python3 manage.py makemigrations  && python3 manage.py migrate
 python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput
-
 # celery -A cropcare worker --loglevel=info --logfile=celery.log --detach
 sudo ps aux | grep '[c]elery' | awk '{print $2}' | sudo xargs -r kill -9
 # DEBUG=False celery -A CropCare worker --loglevel=info --detach
