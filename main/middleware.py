@@ -6,6 +6,10 @@ from django.utils.translation import gettext_lazy as _
 
 from main.signals import set_current_user
 
+import time
+import traceback
+import psutil
+
 logger = logging.getLogger(__name__)
 
 # class HasPermission(BasePermission):
@@ -84,3 +88,61 @@ class CurrentUserLoggingMiddleware:
             set_current_user(None)
         response = self.get_response(request)
         return response
+
+class RequestTimingMiddleware:
+    """
+    Logs every request to Graylog with structured JSON:
+    - endpoint, method, status_code, response_time_ms
+    - user_id
+    - exception info (if any)
+    - system metrics: CPU %, memory %, optionally disk %
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        start_time = time.time()
+        exception_info = None
+        response = None
+
+        try:
+            response = self.get_response(request)
+            return response
+        except Exception as e:
+            exception_info = {
+                "type": type(e).__name__,
+                "message": str(e),
+                "stack": traceback.format_exc()
+            }
+            raise
+        finally:
+            duration_ms = int((time.time() - start_time) * 1000)
+
+            # System metrics at the time of request
+            system_metrics = {
+                "cpu_percent": psutil.cpu_percent(interval=None),
+                "memory_percent": psutil.virtual_memory().percent,
+                "disk_percent": psutil.disk_usage("/").percent
+            }
+
+            # Build extra fields for structured logging
+            extra_fields = {
+                "endpoint": request.path,
+                "method": request.method,
+                "status_code": getattr(response, "status_code", 500),
+                "response_time_ms": duration_ms,
+                "user_id": getattr(request.user, "id", None),
+                "cpu_percent": system_metrics["cpu_percent"],
+                "memory_percent": system_metrics["memory_percent"],
+                "disk_percent": system_metrics["disk_percent"]
+            }
+
+            if exception_info:
+                extra_fields["exception_type"] = exception_info["type"]
+                extra_fields["exception_message"] = exception_info["message"]
+                extra_fields["exception_stack"] = exception_info["stack"]
+
+            # Log with structured fields
+            logger.info("Request processed", extra=extra_fields)
+  

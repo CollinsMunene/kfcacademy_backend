@@ -47,7 +47,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     email_plaintext_message = "{}?token={}".format("https://kfc-frontend-wine.vercel.app/reset-password/confirm", reset_password_token.key)
     message = "Hello "+ str(reset_password_token.user.email)+ ",You have requested a password reset for your account. Please click the button below. The link is valid for one Hour only. If you did not request a password reset, please ignore this email. Thank you."
     send_email.delay(
-        subject="Password Reset for {title}".format(title="FPC"),
+        subject="Password Reset for {title}".format(title="kfc Academy"),
            context={
                         "user":reset_password_token.user.email,
                         "org":"",
@@ -74,7 +74,7 @@ def post_password_reset(sender, user,*args, **kwargs):
     )
     
     send_email.delay(
-        subject="Reset Successful for {title}".format(title="FCP"),
+        subject="Reset Successful for {title}".format(title="kfc Academy"),
            context={
                         "user":user.email,
                         "org":"",

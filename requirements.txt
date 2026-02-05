@@ -14,6 +14,7 @@ django-rest-passwordreset==1.5.0
 djangorestframework==3.16.1
 djangorestframework_simplejwt==5.5.1
 drf-yasg==1.21.11
+graypy==2.1.0
 gunicorn==23.0.0
 inflection==0.5.1
 Jinja2==3.1.6
@@ -22,6 +23,7 @@ MarkupSafe==3.0.3
 packaging==25.0
 pillow==12.0.0
 prompt_toolkit==3.0.52
+psutil==7.2.2
 psycopg2-binary==2.9.11
 PyJWT==2.10.1
 python-dateutil==2.9.0.post0
