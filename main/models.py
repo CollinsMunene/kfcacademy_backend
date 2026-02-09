@@ -99,6 +99,8 @@ class Users(AbstractUser):
     last_name = models.CharField(max_length=40, unique=False, default='',blank=True)
     phone_number = models.CharField(max_length = 20,blank=True,null=True)
     profession = models.CharField(max_length=200,blank=True,null=True)
+    gender = models.CharField(max_length=20,blank=True,null=True)
+    age = models.IntegerField(blank=True,null=True)
     bio = models.TextField(blank=True,null=True)
     password = models.CharField(max_length=300, blank=False, null=False)
     is_active = models.BooleanField(default=True)
