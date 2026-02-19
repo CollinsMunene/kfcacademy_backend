@@ -21,7 +21,7 @@ rm  django_debug.log
 python3 manage.py makemigrations --noinput && python3 manage.py migrate --noinput
 # celery -A cropcare worker --loglevel=info --logfile=celery.log --detach
 sudo ps aux | grep '[c]elery' | awk '{print $2}' | sudo xargs -r kill -9
-# DEBUG=False celery -A CropCare worker --loglevel=info --detach
+# DEBUG=False celery -A KFCAcademy worker --loglevel=info --detach
 DEBUG=False celery -A KFCAcademy worker \
     --loglevel=INFO \
     --logfile=/home/lina/apps/kfc/celery.log \
