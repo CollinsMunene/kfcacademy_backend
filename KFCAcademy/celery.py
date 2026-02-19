@@ -15,7 +15,7 @@ app.autodiscover_tasks()
 
 
 if settings.DEBUG:
-    broker_url = "redis://localhost:6379/0"
+    broker_url = "redis://:statusString123@localhost:6379/0"
     app.conf.timezone = 'Africa/Nairobi'
     app.conf.enable_utc = True
     app.conf.task_routes = {
