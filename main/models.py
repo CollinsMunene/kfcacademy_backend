@@ -622,6 +622,7 @@ class Main2FALog(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
+
 class ActionLogs(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     initiator_id = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE,blank=False,null=False)
