@@ -333,6 +333,20 @@ DEFAULT_FROM_EMAIL = '"KFC Academy" <uat@devligence.com>'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Celery Configuration
+if DEBUG:
+    CELERY_BROKER_URL = "redis://:statusString123@localhost:6379/0"
+    CELERY_RESULT_BACKEND = "redis://:statusString123@localhost:6379/0"
+else:
+    CELERY_BROKER_URL='redis://:sudoStrong123@localhost:6379/0'
+    CELERY_RESULT_BACKEND='redis://:sudoStrong123@localhost:6379/0'
+    
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis as the message broker
+# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Redis as the result backend
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = "json"
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

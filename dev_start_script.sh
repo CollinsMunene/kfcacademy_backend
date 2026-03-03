@@ -6,7 +6,7 @@ rm -r output.out
 rm -r django_debug.log
 # rm -r venv
 # python3 -m venv venv
-# . venv/bin/activate
+. venv/bin/activate
 # pip3 install -r requirements.txt
 # python3 -m pip install -U pip setuptools
 # systemctl stop celery
