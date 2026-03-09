@@ -97,9 +97,8 @@ class UserSerializer(serializers.ModelSerializer):
         if value:
             # Basic phone number validation
             cleaned = re.sub(r'[^\d+]', '', value)
-            if not re.match(r'^\+?[\d\s\-\(\)]{7,15}$', cleaned):
+            if not re.match(r'^\+?[\d\s\-\(\)]{7,15}$', value):
                 raise serializers.ValidationError("Invalid phone number format")
-            return cleaned  # Ensure the cleaned phone number is returned as a string
         return value
     
     def validate_role(self, value):
@@ -162,6 +161,14 @@ class CourseModuleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['guid', 'created_at', 'updated_at']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at','order','description','course'):
+                field.required = False
+            else: 
+                field.required = True
+            
     def get_course_details(self, obj):
         """Return course details for display"""
         if obj.course:
@@ -186,40 +193,127 @@ class CourseModuleSerializer(serializers.ModelSerializer):
         
         return obj.module_progress(user)
     
-    def get_topics(self, obj):
-        """Return related topics for this module"""
-        topics = obj.moduletopics_set.filter(deleted_at__isnull=True).order_by('order')
-        topic_data = []
+    # def get_topics(self, obj):
+    #     """Return related topics for this module"""
+    #     topics = obj.moduletopics_set.filter(deleted_at__isnull=True).order_by('order')
+    #     topic_data = []
         
+    #     for topic in topics:
+    #         topic_data.append({
+    #             'guid': str(topic.guid),
+    #             'name': topic.name,
+    #             'description': topic.description,
+    #             'duration': str(topic.duration) if topic.duration else None,
+    #             'order': topic.order,
+    #             'files_count': len(topic.files) if topic.files else 0,
+    #             'videos_count': len(topic.videos) if topic.videos else 0,
+    #             'images_count': len(topic.images) if topic.images else 0,
+    #             'created_at': topic.created_at
+    #         })
+        
+    #     return topic_data
+    def get_topics(self, obj):
+        """Return related topics for this module with user completion state"""
+        user = self.context.get('user')
+
+        topics = obj.moduletopics_set.filter(
+            deleted_at__isnull=True
+        ).order_by('topic_order')
+
+        # Default: no completed topics
+        completed_topic_ids = set()
+
+        if user:
+            # Use prefetched progress if available (best case)
+            if hasattr(obj, '_prefetched_progress') and obj._prefetched_progress:
+                progress = obj._prefetched_progress[0]
+                completed_topic_ids = set(progress.topics_completed or [])
+            else:
+                # Fallback single query (not per topic)
+                progress = obj.usermoduleprogress_set.filter(user=user).only("topics_completed").first()
+                if progress:
+                    completed_topic_ids = set(progress.topics_completed or [])
+
+        topic_data = []
+
         for topic in topics:
+            is_completed = str(topic.guid) in completed_topic_ids or topic.guid in completed_topic_ids
+
             topic_data.append({
                 'guid': str(topic.guid),
                 'name': topic.name,
                 'description': topic.description,
                 'duration': str(topic.duration) if topic.duration else None,
-                'order': topic.order,
+                'topic_order': topic.topic_order,
+                'is_completed': is_completed,
                 'files_count': len(topic.files) if topic.files else 0,
                 'videos_count': len(topic.videos) if topic.videos else 0,
                 'images_count': len(topic.images) if topic.images else 0,
+                'audio_count': len(topic.audio) if topic.audio else 0,
+                'resource_order': topic.resource_order,
+                'files': topic.files,
+                'files_description': topic.files_description,
+                'videos': topic.videos,
+                'videos_description': topic.videos_description,
+                'images': topic.images,
+                'images_description': topic.images_description,
+                'audio': topic.audio,
+                'audio_description': topic.audio_description,
                 'created_at': topic.created_at
             })
-        
+
         return topic_data
     
-    def get_quizzes(self, obj):
-        """Return related quizzes for this module"""
-        quizzes = obj.modulequizes_set.filter(deleted_at__isnull=True)
-        quiz_data = []
+    # def get_quizzes(self, obj):
+    #     """Return related quizzes for this module"""
+    #     quizzes = obj.modulequizes_set.filter(deleted_at__isnull=True)
+    #     quiz_data = []
         
+    #     for quiz in quizzes:
+    #         quiz_data.append({
+    #             'guid': str(quiz.guid),
+    #             'name': quiz.name,
+    #             'description': quiz.description,
+    #             'question_count': quiz.quizquestions_set.filter(deleted_at__isnull=True).count(),
+    #             'created_at': quiz.created_at
+    #         })
+        
+    #     return quiz_data
+    def get_quizzes(self, obj):
+        """Return related quizzes (questions) with user answer state"""
+        user = self.context.get('user')
+
+        quizzes = QuizQuestions.objects.filter(
+            quiz__module=obj,
+            deleted_at__isnull=True
+        ).order_by('order')
+
+        answered_question_ids = set()
+
+        if user:
+            # Single query: get all questions the user has responded to in this module
+            answered_question_ids = set(
+                QuizResponses.objects.filter(
+                    user=user,
+                    question__quiz__module=obj
+                ).values_list('question_id', flat=True).distinct()
+            )
+
+        quiz_data = []
+
         for quiz in quizzes:
             quiz_data.append({
                 'guid': str(quiz.guid),
-                'name': quiz.name,
-                'description': quiz.description,
-                'question_count': quiz.quizquestions_set.filter(deleted_at__isnull=True).count(),
+                'question_text': quiz.question_text,
+                'question_type': quiz.question_type,
+                'options': quiz.options,
+                'correct_answer': quiz.correct_answer,
+                'marks': quiz.marks,
+                'order': quiz.order,
+                'is_answered': quiz.id in answered_question_ids, 
                 'created_at': quiz.created_at
             })
-        
+
         return quiz_data
     
     def get_topic_count(self, obj):
@@ -228,7 +322,7 @@ class CourseModuleSerializer(serializers.ModelSerializer):
     
     def get_quiz_count(self, obj):
         """Return count of quizzes in this module"""
-        return obj.modulequizes_set.filter(deleted_at__isnull=True).count()
+        return obj.quizzes.filter(deleted_at__isnull=True).count()
     
     def create(self, validated_data):
         """Convert course UUID to Course instance"""
@@ -242,14 +336,27 @@ class CourseModuleSerializer(serializers.ModelSerializer):
             })
         return super().create(validated_data)
     
+    def update(self, instance, validated_data):
+        """Convert course UUID to Course instance during update"""
+        if 'course' in validated_data:
+            course_uuid = validated_data.pop('course')
+            try:
+                course = Courses.objects.get(guid=course_uuid)
+                validated_data['course'] = course
+            except Courses.DoesNotExist:
+                raise serializers.ValidationError({
+                    'course': f'Course with GUID {course_uuid} does not exist.'
+                })
+        return super().update(instance, validated_data)
+    
     @classmethod
     def setup_eager_loading(cls, queryset, user=None):
         """Optimize queryset to prevent N+1 queries for CourseModules"""
         queryset = queryset.select_related('course')
         queryset = queryset.prefetch_related(
             'moduletopics_set',
-            'modulequizes_set',
-            'modulequizes_set__quizquestions_set'
+            'quizzes',
+            'quizzes__quizquestions_set'
         )
         
         if user:
@@ -274,7 +381,7 @@ class CourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courses
         fields = [
-            'id', 'guid', 'title', 'description', 'image', 'tags', 'category',
+            'id', 'guid', 'title', 'description', 'image', 'tags', 
             'expertise_level', 'prerequisites', 'objectives', 'isPaid', 
             'amount', 'currency', 'isFeatured', 'status', 'instructor',
             'instructor_details', 'total_duration', 'course_progress', 'modules',
@@ -329,8 +436,7 @@ class CourseSerializer(serializers.ModelSerializer):
         queryset = queryset.select_related('instructor', 'instructor__role')
         queryset = queryset.prefetch_related(
             'coursemodules_set__moduletopics_set',
-            'coursemodules_set__modulequizes_set',
-            'coursemodules_set__modulequizes_set__quizquestions_set'
+            'coursemodules_set__quizzes'
         )
         
         if user:
@@ -344,7 +450,7 @@ class CourseSerializer(serializers.ModelSerializer):
             )
         
         return queryset
-
+    
     def to_representation(self, instance):
         """Override to return instructor GUID and details instead of instructor ID"""
         data = super().to_representation(instance)
@@ -476,9 +582,9 @@ class ModuleTopicSerializer(serializers.ModelSerializer):
     class Meta:
         model = ModuleTopics
         fields = [
-            'guid', 'module', 'module_details', 'name', 'description', 'files', 
+            'guid', 'module', 'module_details', 'name', 'description', 'files',
             'files_description', 'videos', 'videos_description', 'images', 
-            'images_description', 'duration', 'order', 'created_at', 'updated_at'
+            'images_description', 'duration', 'topic_order', 'created_at', 'updated_at'
         ]
         read_only_fields = ['guid', 'created_at', 'updated_at']
 
@@ -510,23 +616,45 @@ class ModuleTopicSerializer(serializers.ModelSerializer):
             })
         return super().create(validated_data)
 
-
+    def update(self, instance, validated_data):
+        """Convert module UUID to Module instance during update"""
+        if 'module' in validated_data:
+            module_uuid = validated_data.pop('module')
+            try:
+                module = CourseModules.objects.get(guid=module_uuid)
+                validated_data['module'] = module
+            except CourseModules.DoesNotExist:
+                raise serializers.ValidationError({
+                    'module': f'Module with GUID {module_uuid} does not exist.'
+                })
+        return super().update(instance, validated_data)
+    
 class ModuleQuizSerializer(serializers.ModelSerializer):
-    module = serializers.UUIDField(write_only=True, help_text="Module GUID - required for creation")
+    module = serializers.UUIDField(
+        write_only=True, required=False, allow_null=True,
+        help_text="Module GUID - optional if course is provided"
+    )
     module_details = serializers.SerializerMethodField(read_only=True)
+
+    course = serializers.UUIDField(
+        write_only=True, required=False, allow_null=True,
+        help_text="Course GUID - optional if module is provided"
+    )
+    course_details = serializers.SerializerMethodField(read_only=True)
+
     questions = QuizQuestionsSerializer(source='quizquestions_set', many=True, read_only=True)
     question_count = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = ModuleQuizes
         fields = [
-            'guid', 'module', 'module_details', 'name', 'description',
-            'questions', 'question_count', 'created_at', 'updated_at'
+            'guid', 'module', 'module_details', 'course', 'course_details',
+            'name', 'description', 'questions', 'question_count',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['guid', 'created_at', 'updated_at']
 
     def get_module_details(self, obj):
-        """Return module details for display"""
         if obj.module:
             return {
                 'guid': str(obj.module.guid),
@@ -535,28 +663,50 @@ class ModuleQuizSerializer(serializers.ModelSerializer):
             }
         return None
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for field_name, field in self.fields.items():
-            if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at','questions','question_count','guid','module_details'):
-                field.required = False
-    
+    def get_course_details(self, obj):
+        if obj.course:
+            return {
+                'guid': str(obj.course.guid),
+                'title': obj.course.title
+            }
+        return None
+
     def get_question_count(self, obj):
         return obj.quizquestions_set.filter(deleted_at__isnull=True).count()
-    
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Make certain fields optional
+        for field_name, field in self.fields.items():
+            if field_name in (
+                'created_by','created_at','deleted_at','deleted_by','updated_by',
+                'updated_at','questions','question_count','guid',
+                'module_details','module','course_details','course'
+            ):
+                field.required = False
+
     def create(self, validated_data):
-        """Convert module UUID to Module instance"""
-        module_uuid = validated_data.pop('module')
-        try:
-            module = CourseModules.objects.get(guid=module_uuid)
-            validated_data['module'] = module
-        except CourseModules.DoesNotExist:
-            raise serializers.ValidationError({
-                'module': f'Module with GUID {module_uuid} does not exist.'
-            })
+        module_uuid = validated_data.pop('module', None)
+        course_uuid = validated_data.pop('course', None)
+
+        # Must have at least one
+        if not module_uuid and not course_uuid:
+            raise serializers.ValidationError("Either module or course must be provided.")
+
+        if module_uuid:
+            try:
+                validated_data['module'] = CourseModules.objects.get(guid=module_uuid)
+            except CourseModules.DoesNotExist:
+                raise serializers.ValidationError({'module': f'Module with GUID {module_uuid} does not exist.'})
+
+        if course_uuid:
+            try:
+                validated_data['course'] = Courses.objects.get(guid=course_uuid)
+            except Courses.DoesNotExist:
+                raise serializers.ValidationError({'course': f'Course with GUID {course_uuid} does not exist.'})
+
         return super().create(validated_data)
-
-
+    
 class QuizResponseSerializer(serializers.ModelSerializer):
     user = serializers.UUIDField(write_only=True, help_text="User GUID - required for creation")
     question = serializers.UUIDField(write_only=True, help_text="Question GUID - required for creation") 
@@ -783,9 +933,6 @@ class UserProgressSerializer(serializers.ModelSerializer):
         return None
 
     def get_progress(self, obj):
-        # Add debugging to see actual values
-        print(f"Serializer - Quiz completed: {obj.quiz_completed}")
-        print(f"Serializer - Progress calculation: {obj.progress}")
         return obj.progress
 
     def to_representation(self, instance):
@@ -833,7 +980,7 @@ class PublicCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courses
         fields = [
-            'guid', 'title', 'description', 'image', 'tags', 'expertise_level','category',
+            'guid', 'title', 'description', 'image', 'tags', 'expertise_level',
             'isPaid', 'amount', 'currency', 'isFeatured', 'instructor_name', 
             'instructor_image', 'total_duration','created_at', 'updated_at'
         ]
@@ -844,7 +991,7 @@ class PublicCourseSerializer(serializers.ModelSerializer):
         return None
     
     def get_instructor_image(self, obj):
-        if obj.instructor and obj.instructor.image:
+        if obj.instructor and obj.instructor.image.url:
             return obj.instructor.image.url
         return None
 
@@ -885,7 +1032,7 @@ class CourseDiscussionSerializer(serializers.ModelSerializer):
                 'guid': str(obj.user.guid),
                 'name': f"{obj.user.first_name} {obj.user.last_name}",
                 'email': obj.user.email,
-                'image': obj.user.image.url if obj.user.image else None,
+                'image': obj.user.image.image if obj.user.image else None,
             }
         return None
 
@@ -1000,7 +1147,7 @@ class EnrolledCourseSerializer(serializers.ModelSerializer):
     
     def get_image(self, obj):
         if obj.course.image:
-            return obj.course.image.url
+            return obj.course.image
         return None
     
     def get_course_progress(self, obj):
@@ -1241,3 +1388,10 @@ class QuizSubmissionSummarySerializer(serializers.Serializer):
             'name': f"{obj['user'].first_name} {obj['user'].last_name}",
             'email': obj['user'].email
         }
+
+
+class FilePathSerializer(serializers.Serializer):
+    file_path = serializers.CharField(
+        help_text="Path of the file for generating a presigned URL."
+    )
+

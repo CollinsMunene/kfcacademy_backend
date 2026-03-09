@@ -1,6 +1,8 @@
 # from datetime import datetime, timezone
 import os
 import random
+import re
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from rest_framework.response import Response
@@ -15,6 +17,7 @@ from uuid import UUID
 from io import BytesIO
 from KFCAcademy.settings import BASE_DIR, STATIC_URL
 from KFCAcademy.tasks import send_email
+from KFCAcademy.utils.utils import delete_cloudflare_file_task, delete_file_from_minio_task, get_from_minio, upload_file_to_minio_task, upload_image_to_cloudflare_task, upload_video_to_cloudflare_task
 from KFCAcademy.views import FreeAuthView, ProtectedAuthView, PublicAuthView
 from main.models import (
     ActionLogs, Main2FALog, Permission, Role, Users, Courses, CourseModules, 
@@ -22,7 +25,7 @@ from main.models import (
     UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
 )
 from main.serializers import (
-    ActionLogsSerializer, Main2FASerializer, PermissionsSerializer, 
+    ActionLogsSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
     RoleSerializer, UserSerializer, CourseSerializer, CourseModuleSerializer,
     QuizQuestionsSerializer, ModuleTopicSerializer, ModuleQuizSerializer,
     QuizResponseSerializer, CourseEnrollmentSerializer, UserProgressSerializer,
@@ -86,7 +89,8 @@ class UserRegister(FreeAuthView):
     def post(self, request, format=None):
         try:
             email = request.data.get('email')
-            if Users.objects.filter(email=email).exists():
+            lowercased_email = email.lower()
+            if Users.objects.filter(email=lowercased_email).exists():
                 return Response({
                     "status": "ok",
                     "message": "User with the email already exists",
@@ -97,37 +101,48 @@ class UserRegister(FreeAuthView):
             # Username & password generation
             username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
             request.data['username'] = username
-            # initial_password = ";4yGcR56O{|1"
-            # print(initial_password)
-            # request.data['password'] = request.data['password']
             request.data['is_first_time_login'] = True
 
+            request.data['first_name'] = request.data['first_name'].lower().title()
+            request.data['last_name'] = request.data['last_name'].lower().title()
+
+            if 'phone_number' in request.data:
+                phone = str(request.data['phone_number'])
+                # Keep only digits
+                phone_digits = re.sub(r'\D', '', phone)
+                
+                if not phone_digits:  # invalid phone
+                    request.data['phone_number'] = None
+                elif phone_digits.startswith('0'):
+                    request.data['phone_number'] = f"254{phone_digits[1:]}"
+                elif phone_digits.startswith('254'):
+                    request.data['phone_number'] = phone_digits
+                else:
+                    request.data['phone_number'] = f"254{phone_digits}"
+            
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
                 user = serializer.save(created_by="self", username=username)
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image_buffer = self.create_profile_image(user_initials)
+                image = self.create_profile_image(user_initials)
                 img_name = f"{user_initials}.jpg"
-                user.image.save(
+                user.image.save(img_name, InMemoryUploadedFile(
+                    image,
+                    None,
                     img_name,
-                    InMemoryUploadedFile(
-                        image_buffer,
-                        None,
-                        img_name,
-                        'image/jpeg',
-                        image_buffer.getbuffer().nbytes,  # ✅ CORRECT SIZE
-                        None
-                    )
-                )
+                    'image/jpeg',
+                    image.tell,
+                    None
+                ))
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
                 message1 = f"You have been added to the KFC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
-                link = 'https://kfc-frontend-wine.vercel.app/login'
+                link = 'https://academy.kenyaflowercouncil.org/login'
 
                 send_email.delay(
                     subject=f"Congratulations! Welcome to KFC Academy Platform",
@@ -138,7 +153,7 @@ class UserRegister(FreeAuthView):
                         "message2": message2,
                         "message3": message3,
                         "username": request.data.get('email'),
-                        "password": "[Password you set during registration]",
+                        "password": '<PASSWORD YOU SET>',
                         "link": link
                     },
                     template='welcome_email.html',
@@ -168,7 +183,7 @@ class UserRegister(FreeAuthView):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
 
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/static/MontserratBlack.ttf")
+        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
         font = ImageFont.truetype(font_path, 350)
 
         draw = ImageDraw.Draw(img)
@@ -178,10 +193,8 @@ class UserRegister(FreeAuthView):
         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
 
         buffer = BytesIO()
-        img.save(buffer, format='JPEG')
-        buffer.seek(0)  # 🔴 VERY IMPORTANT
-
-        return buffer
+        img.save(fp=buffer, format='JPEG')
+        return ContentFile(buffer.getvalue())
     
 class AdminCreateUser(ProtectedAuthView):
     serializer_class = UserSerializer
@@ -221,14 +234,14 @@ class AdminCreateUser(ProtectedAuthView):
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image_buffer = self.create_profile_image(user_initials)
+                image = self.create_profile_image(user_initials)
                 img_name = f"{user_initials}.jpg"
                 user.image.save(img_name, InMemoryUploadedFile(
-                    image_buffer,
+                    image,
                     None,
                     img_name,
                     'image/jpeg',
-                    image_buffer.getbuffer().nbytes,
+                    image.tell,
                     None
                 ))
 
@@ -237,7 +250,7 @@ class AdminCreateUser(ProtectedAuthView):
                 message1 = f"You have been added to the KFC Academy Platform."
                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
                 message3 = "Welcome to the team."
-                link = 'https://kfc-frontend-wine.vercel.app/login'
+                link = 'https://academy.kenyaflowercouncil.org/login'
 
                 send_email.delay(
                     subject=f"Congratulations! Welcome to KFC Academy Platform",
@@ -278,7 +291,7 @@ class AdminCreateUser(ProtectedAuthView):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
 
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/static/MontserratBlack.ttf")
+        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
         font = ImageFont.truetype(font_path, 350)
 
         draw = ImageDraw.Draw(img)
@@ -288,11 +301,8 @@ class AdminCreateUser(ProtectedAuthView):
         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
 
         buffer = BytesIO()
-        img.save(buffer, format='JPEG')
-        buffer.seek(0)  # 🔴 VERY IMPORTANT
-
-        return buffer
-
+        img.save(fp=buffer, format='JPEG')
+        return ContentFile(buffer.getvalue())
 
 
 class AdminReactivateUser(ProtectedAuthView):
@@ -328,7 +338,7 @@ class AdminReactivateUser(ProtectedAuthView):
                     "message3": "Welcome back to the team.",
                     "username": user.email,
                     "password": initial_password,
-                    "link": 'https://kfc-frontend-wine.vercel.app/login'
+                    "link": 'https://academy.kenyaflowercouncil.org/login'
                 },
                 template='welcome_email.html',
                 to_email=user.email
@@ -394,7 +404,6 @@ class UpdateUser(ProtectedAuthView):
             serializer.save(updated_by=updated_by)
             return Response(serializer.data,status=HTTP_200_OK)
         else:
-            print(serializer.errors)
             return Response({
                 "status":"Failed",
                 "message":"User Not Updated",
@@ -496,14 +505,12 @@ class CreateRole(ProtectedAuthView):
                         }, status=HTTP_400_BAD_REQUEST)
                 return Response(serializer.data, status=HTTP_200_OK)
             else:
-                print(serializer.errors)
                 return Response({
                         "status": "ok",
                         "message": serializer.errors,
                         "data": serializer.errors
                     }, status=HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print(e)
             return Response({
                 "status": "Failed",
                 "message": "Role not created",
@@ -542,7 +549,6 @@ class UpdateRole(ProtectedAuthView):
             serializer.save(updated_by=request.user.guid)
             return Response(serializer.data, status=HTTP_200_OK)
         else:
-            print(serializer.errors)
             return Response({
                     "status": "ok",
                     "message": serializer.errors,
@@ -603,7 +609,6 @@ class CreatePermissions(ProtectedAuthView):
             serializer.save(created_by=request.user.guid)
             return Response(serializer.data, status=HTTP_200_OK)
         else:
-            print(serializer.errors)
             return Response({
                     "status": "ok",
                     "message": serializer.errors,
@@ -623,7 +628,6 @@ class UpdatePermissions(ProtectedAuthView):
             serializer.save(updated_by=request.user.guid)
             return Response(serializer.data, status=HTTP_200_OK)
         else:
-            print(serializer.errors)
             return Response({
                     "status": "ok",
                     "message": serializer.errors,
@@ -810,9 +814,9 @@ class UpdateCourse(ProtectedAuthView):
                 pass
 
             # Handle course image upload
-            if 'image' in request.FILES:
-                image = request.FILES['image']
-                course.image = image
+            # if 'image' in request.FILES:
+            #     image = request.FILES['image']
+            #     course.image = image
 
             serializer = CourseSerializer(course, data=request.data, partial=True)
             if serializer.is_valid():
@@ -1241,6 +1245,35 @@ class AllModuleQuizzes(ProtectedAuthView):
                 "data": str(e)
             }, status=HTTP_400_BAD_REQUEST)
 
+class FinalAssessQuizzes(ProtectedAuthView):
+    serializer_class = ModuleQuizSerializer
+    
+    def get(self, request, course_guid=None, format=None):
+        """
+        Get all quizzes, optionally filtered by module
+        """
+        try:
+            print("course guid")
+            print(course_guid)
+            if course_guid:
+                # Get quizzes for specific course
+                course = get_object_or_404(Courses, guid=course_guid, deleted_at__isnull=True)
+                queryset = ModuleQuizes.objects.filter(course=course, deleted_at__isnull=True)
+
+            # Optimize queries
+            queryset = queryset.select_related('course').prefetch_related('quizquestions_set')
+            # print(queryset)
+            
+            serializer = ModuleQuizSerializer(queryset, many=True)
+            return Response(serializer.data, status=HTTP_200_OK)
+            
+        except Exception as e:
+            return Response({
+                "status": "Failed",
+                "message": "Error retrieving quizzes",
+                "data": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
+        
 class OneModuleQuiz(ProtectedAuthView):
     serializer_class = ModuleQuizSerializer
     
@@ -1303,6 +1336,14 @@ class CreateModuleQuiz(ProtectedAuthView):
                     # Add role-based permission check here if needed
                     pass
             
+            course_guid = request.data.get('course')
+            if course_guid:
+                course = get_object_or_404(Courses, guid=course_guid, deleted_at__isnull=True)
+                # Check if user can add quizzes to this module
+                if course.instructor != request.user:
+                    # Add role-based permission check here if needed
+                    pass
+            
             serializer = ModuleQuizSerializer(data=request.data)
             if serializer.is_valid():
                 quiz = serializer.save(created_by=str(request.user.guid))
@@ -1336,9 +1377,9 @@ class UpdateModuleQuiz(ProtectedAuthView):
             quiz = get_object_or_404(ModuleQuizes, guid=guid, deleted_at__isnull=True)
             
             # Check permissions
-            if quiz.module.course.instructor != request.user:
-                # Add role-based permission check here if needed
-                pass
+            # if quiz.module.course.instructor != request.user:
+            #     # Add role-based permission check here if needed
+            #     pass
             
             serializer = ModuleQuizSerializer(quiz, data=request.data, partial=True)
             if serializer.is_valid():
@@ -1373,9 +1414,9 @@ class DeleteModuleQuiz(ProtectedAuthView):
             quiz = get_object_or_404(ModuleQuizes, guid=guid, deleted_at__isnull=True)
             
             # Check permissions
-            if quiz.module.course.instructor != request.user:
-                # Add role-based permission check here if needed
-                pass
+            # if quiz.module.course.instructor != request.user:
+            #     # Add role-based permission check here if needed
+            #     pass
             
             quiz.deleted_at = timezone.now()
             quiz.deleted_by = str(request.user.guid)
@@ -1459,9 +1500,9 @@ class CreateQuizQuestion(ProtectedAuthView):
             if quiz_guid:
                 quiz = get_object_or_404(ModuleQuizes, guid=quiz_guid, deleted_at__isnull=True)
                 # Check if user can add questions to this quiz
-                if quiz.module.course.instructor != request.user:
-                    # Add role-based permission check here if needed
-                    pass
+                # if quiz.module.course.instructor != request.user:
+                #     # Add role-based permission check here if needed
+                #     pass
             
             serializer = QuizQuestionsSerializer(data=request.data)
             if serializer.is_valid():
@@ -1533,9 +1574,9 @@ class DeleteQuizQuestion(ProtectedAuthView):
             question = get_object_or_404(QuizQuestions, guid=guid, deleted_at__isnull=True)
             
             # Check permissions
-            if question.quiz.module.course.instructor != request.user:
-                # Add role-based permission check here if needed
-                pass
+            # if question.quiz.module.course.instructor != request.user:
+            #     # Add role-based permission check here if needed
+            #     pass
             
             question.deleted_at = timezone.now()
             question.deleted_by = str(request.user.guid)
@@ -1970,9 +2011,15 @@ class MarkTopicComplete(ProtectedAuthView):
             )
             
             # Add topic to completed list if not already there
-            if str(topic.guid) not in module_progress.topics_completed_guids:
-                module_progress.topics_completed.append(str(topic.guid))
-                module_progress.save()
+            # if str(topic.guid) not in module_progress.topics_completed_guids:
+            #     module_progress.topics_completed.append(str(topic.guid))
+            #     module_progress.save()
+            completed = [str(t) for t in module_progress.topics_completed or []]
+
+            if str(topic.guid) not in completed:
+                completed.append(str(topic.guid))
+                module_progress.topics_completed = completed
+                module_progress.update_topic_progress()
             
             return Response({
                 "status": "ok",
@@ -2107,14 +2154,14 @@ class CourseEnrollments(ProtectedAuthView):
                 deleted_at__isnull=True
             ).select_related('user', 'course').order_by('-enrolled_at')
             
-            serializer = self.serializer_class(enrollments, many=True)
+            quiz_submissions_data = self.serializer_class(enrollments, many=True)
             
             return Response({
                 'course': {
                     'guid': str(course.guid),
                     'title': course.title
                 },
-                'quizzes': quiz_submissions_data
+                'quizzes': quiz_submissions_data.data
             }, status=HTTP_200_OK)
             
         except Exception as e:
@@ -2474,12 +2521,12 @@ class QuizSubmissions(ProtectedAuthView):
             quiz = get_object_or_404(ModuleQuizes, guid=quiz_guid, deleted_at__isnull=True)
             
             # Check if user is the instructor of the course that contains this quiz
-            if quiz.module.course.instructor != request.user:
-                return Response({
-                    "status": "Failed",
-                    "message": "Access denied",
-                    "data": "Only course instructors can view quiz submissions"
-                }, status=HTTP_403_FORBIDDEN)
+            # if quiz.module.course.instructor != request.user:
+            #     return Response({
+            #         "status": "Failed",
+            #         "message": "Access denied",
+            #         "data": "Only course instructors can view quiz submissions"
+                # }, status=HTTP_403_FORBIDDEN)
             
             # Get unique users who have submitted responses for this quiz
             submitted_users = QuizResponses.objects.filter(
@@ -2566,12 +2613,12 @@ class UserQuizSubmissionDetail(ProtectedAuthView):
             user = get_object_or_404(Users, guid=user_guid)
             
             # Check if user is the instructor of the course that contains this quiz
-            if quiz.module.course.instructor != request.user:
-                return Response({
-                    "status": "Failed",
-                    "message": "Access denied",
-                    "data": "Only course instructors can view quiz submissions"
-                }, status=HTTP_403_FORBIDDEN)
+            # if quiz.module.course.instructor != request.user:
+            #     return Response({
+            #         "status": "Failed",
+            #         "message": "Access denied",
+            #         "data": "Only course instructors can view quiz submissions"
+            #     }, status=HTTP_403_FORBIDDEN)
             
             # Get user's responses for this quiz
             user_responses = QuizResponses.objects.filter(
@@ -2685,12 +2732,12 @@ class AddQuizFeedback(ProtectedAuthView):
             user = get_object_or_404(Users, guid=user_guid)
             
             # Check if user is the instructor of the course that contains this quiz
-            if quiz.module.course.instructor != request.user:
-                return Response({
-                    "status": "Failed",
-                    "message": "Access denied",
-                    "data": "Only course instructors can add feedback"
-                }, status=HTTP_403_FORBIDDEN)
+            # if quiz.module.course.instructor != request.user:
+            #     return Response({
+            #         "status": "Failed",
+            #         "message": "Access denied",
+            #         "data": "Only course instructors can add feedback"
+            #     }, status=HTTP_403_FORBIDDEN)
             
             # Check if user has submitted answers for this quiz
             if not QuizResponses.objects.filter(
@@ -2774,12 +2821,12 @@ class AddQuizFeedback(ProtectedAuthView):
             user = get_object_or_404(Users, guid=user_guid)
             
             # Check if user is the instructor of the course that contains this quiz
-            if quiz.module.course.instructor != request.user:
-                return Response({
-                    "status": "Failed",
-                    "message": "Access denied",
-                    "data": "Only course instructors can delete feedback"
-                }, status=HTTP_403_FORBIDDEN)
+            # if quiz.module.course.instructor != request.user:
+            #     return Response({
+            #         "status": "Failed",
+            #         "message": "Access denied",
+            #         "data": "Only course instructors can delete feedback"
+            #     }, status=HTTP_403_FORBIDDEN)
             
             # Get the feedback
             feedback = get_object_or_404(
@@ -2806,3 +2853,134 @@ class AddQuizFeedback(ProtectedAuthView):
                 "message": "Feedback not deleted",
                 "data": str(e)
             }, status=HTTP_400_BAD_REQUEST)
+
+
+# =============================================================================
+# FILE RESOURCES MANAGEMENT VIEWS
+# =============================================================================
+class UploadCourseResources(ProtectedAuthView):
+
+    def post(self, request, format=None):
+        try:
+            resource_type = request.data.get("type")
+            uploaded_file = request.FILES.get("file")
+
+            allowed_types = ["file", "image", "audio", "video"]
+
+            if resource_type not in allowed_types:
+                return Response({
+                    "status": "Failed",
+                    "message": "Invalid type. Must be file, image, audio or video"
+                }, status=HTTP_400_BAD_REQUEST)
+
+            if not uploaded_file:
+                return Response({
+                    "status": "Failed",
+                    "message": "No file provided"
+                }, status=HTTP_400_BAD_REQUEST)
+            
+            file_data = uploaded_file.read()
+            file_name = uploaded_file.name
+
+            # Upload based on type
+            if resource_type in ["file", "audio"]:
+                file_url = upload_file_to_minio_task(
+                    file_data, file_name,
+                )
+            else:
+                if resource_type == 'image':
+                    file_url = upload_image_to_cloudflare_task(
+                        file_data, file_name,
+                    )
+                else:
+                    file_url = upload_video_to_cloudflare_task(
+                        file_data, file_name,
+                    )
+
+            return Response({
+                "status": "OK",
+                "message": "File uploaded successfully",
+                "data": {
+                    "type": resource_type,
+                    "url": file_url
+                }
+            }, status=HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": "Failed",
+                "message": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
+        
+class DeleteCourseResources(ProtectedAuthView):
+
+    def delete(self, request, format=None):
+        try:
+            resource_type = request.query_params.get("type")
+            filename = request.query_params.get("filename")
+
+            allowed_types = ["file", "image", "audio", "video"]
+
+            if resource_type not in allowed_types:
+                return Response({
+                    "status": "Failed",
+                    "message": "Invalid type. Must be file, image, audio or video"
+                }, status=HTTP_400_BAD_REQUEST)
+
+            if not filename:
+                return Response({
+                    "status": "Failed",
+                    "message": "File URL is required"
+                }, status=HTTP_400_BAD_REQUEST)
+
+            # Extract object key from URL
+            # parsed_url = urlparse(file_url)
+            # object_key = parsed_url.path.lstrip("/")
+
+            # Delete based on type
+            if resource_type in ["file", "audio"]:
+                delete_file_from_minio_task(filename)
+            else:
+                if resource_type == 'image':
+                    delete_cloudflare_file_task(
+                        filename,resource_type
+                    )
+                else:
+                    delete_cloudflare_file_task(
+                        filename,resource_type
+                    )
+            return Response({
+                "status": "OK",
+                "message": "File deleted successfully"
+            }, status=HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": "Failed",
+                "message": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
+
+class FileHandlerGet(ProtectedAuthView):
+    serializer_class = FilePathSerializer
+    def post(self, request, format=None):
+        try:
+            # remove leading word before first slash
+            file_path = request.data['file_path'].split('/', 1)[-1]
+            presigned_url = get_from_minio(file_path)
+            return JsonResponse({'presignedUrl': presigned_url})
+        except Exception as e:
+            # logger.exception(
+            #     e.__str__(),
+            #     extra={
+            #         "view": f"FileHandlerGet.post | DEBUG: {settings.DEBUG}",
+            #         "line": e.__traceback__.tb_lineno,
+            #     }
+            # )
+            return Response({
+                "status": "Failed",
+                "message": "Request has failed",
+                "data":  f"{e}"
+            }, status=HTTP_400_BAD_REQUEST)
+
+
+

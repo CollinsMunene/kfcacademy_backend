@@ -72,6 +72,7 @@ urlpatterns = [
     # Module Quizzes
     re_path(r'^quizzes/$', views.AllModuleQuizzes.as_view(), name='all_quizzes'),
     re_path(r'^modules/(?P<module_guid>[\w-]+)/quizzes/$', views.AllModuleQuizzes.as_view(), name='module_quizzes'),
+    re_path(r'^final_assessment/(?P<course_guid>[\w-]+)/course/$', views.FinalAssessQuizzes.as_view(), name='final_assess_quizzes'),
     re_path(r'^quizzes/create/$', views.CreateModuleQuiz.as_view(), name='create_quiz'),
     re_path(r'^quizzes/(?P<guid>[\w-]+)/$', views.OneModuleQuiz.as_view(), name='one_quiz'),
     re_path(r'^quizzes/(?P<guid>[\w-]+)/update/$', views.UpdateModuleQuiz.as_view(), name='update_quiz'),
@@ -132,6 +133,10 @@ urlpatterns = [
     re_path(r'^discussions/(?P<guid>[\w-]+)/$', views.OneCourseDiscussion.as_view(), name='one_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/update/$', views.UpdateCourseDiscussion.as_view(), name='update_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/delete/$', views.DeleteCourseDiscussion.as_view(), name='delete_discussion'),
+
+    # File Management
+    re_path(r'^file/upload/$', views.UploadCourseResources.as_view(), name='upload_course_resource'),
+    re_path(r'^file/delete/$', views.DeleteCourseResources.as_view(), name='upload_course_resource'),
 
 
 ]
