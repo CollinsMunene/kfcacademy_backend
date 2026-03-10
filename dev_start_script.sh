@@ -4,11 +4,11 @@ fuser -k 8005/tcp
 cd /root/kfc/
 rm -r output.out
 rm -r django_debug.log
-# rm -r venv
-# python3 -m venv venv
+rm -r venv
+python3 -m venv venv
 . venv/bin/activate
-# pip3 install -r requirements.txt
-# python3 -m pip install -U pip setuptools
+pip3 install -r requirements.txt
+python3 -m pip install -U pip setuptools
 # systemctl stop celery
 # pkill -f 'celery'
 # systemctl start celery
