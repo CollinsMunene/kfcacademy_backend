@@ -10,46 +10,80 @@ from celery import shared_task
 from django.core.mail import get_connection,EmailMultiAlternatives
 from KFCAcademy.celery import app
 from jinja2 import Environment, FileSystemLoader
+import resend
+
+resend.api_key ="re_Lko7WyQ6_6EnuGTQEsrXm7CaAHBC4Z2fy"
+
 
 # Setup Jinja2 environment (once globally)
 jinja_env = Environment(loader=FileSystemLoader("templates/email"))
 
-# resend.api_key ="re_bHYJb3M6_PJdoFSCMEYKthScS2myWRkC1"
 @app.task(bind=True, max_retries=3, default_retry_delay=60)  # Retry up to 3 times with a 60-second delay between retries
 def send_email(self, subject, context, template, to_email):
     try:
         print(f"Preparing to send email to {to_email} with subject '{subject}' using template '{template}'")
-        connection = get_connection()
-        connection.timeout = 120
 
+        # Render the email template
+        email_html_message = render_to_string(f'email/{template}', context)
 
-        msg = EmailMultiAlternatives(
-            # title:
-            subject="{title}".format(title=subject),
-            # message:
-            body="",
-            # from:
-            from_email='"{from_name}" <{from_email}>'.format(from_name='KFC Academy', from_email="uat@devligence.com"),
-            # to:
-            to=[to_email],
-            connection=connection
-        )
+        # Prepare Resend email parameters
+        params = {
+            "from": "KFC Academy <noreply@devligence.com>",
+            "to": [to_email],
+            "subject": subject,
+            "html": email_html_message,
+        }
 
-        email_html_message = render_to_string('email/{template}'.format(template=template), context)
-        msg.attach_alternative(email_html_message, "text/html")
+        # Send email using Resend
+        response = resend.Emails.send(params)
+        print(f"Resend response: {response}")
 
-        # Send email
-        num_sent = msg.send()
-        print(f"Email send function returned: {num_sent}")
-
-        if num_sent == 1:
-            print("Email sent successfully.")
+        if response.get("id"):
+            print("Email sent successfully via Resend.")
         else:
-            print("Unexpected number of emails sent:", num_sent)
+            print("Failed to send email via Resend.")
 
     except Exception as e:
         print(f"Error sending email: {e}")
         self.retry(exc=e)
+
+
+# resend.api_key ="re_bHYJb3M6_PJdoFSCMEYKthScS2myWRkC1"
+# @app.task(bind=True, max_retries=3, default_retry_delay=60)  # Retry up to 3 times with a 60-second delay between retries
+# def send_email(self, subject, context, template, to_email):
+#     try:
+#         print(f"Preparing to send email to {to_email} with subject '{subject}' using template '{template}'")
+#         connection = get_connection()
+#         connection.timeout = 120
+
+
+#         msg = EmailMultiAlternatives(
+#             # title:
+#             subject="{title}".format(title=subject),
+#             # message:
+#             body="",
+#             # from:
+#             from_email='"{from_name}" <{from_email}>'.format(from_name='KFC Academy', from_email="uat@devligence.com"),
+#             # to:
+#             to=[to_email],
+#             connection=connection
+#         )
+
+#         email_html_message = render_to_string('email/{template}'.format(template=template), context)
+#         msg.attach_alternative(email_html_message, "text/html")
+
+#         # Send email
+#         num_sent = msg.send()
+#         print(f"Email send function returned: {num_sent}")
+
+#         if num_sent == 1:
+#             print("Email sent successfully.")
+#         else:
+#             print("Unexpected number of emails sent:", num_sent)
+
+#     except Exception as e:
+#         print(f"Error sending email: {e}")
+#         self.retry(exc=e)
 
 
 @app.task(bind=True, max_retries=3, default_retry_delay=60)
