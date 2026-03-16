@@ -2,10 +2,11 @@ import re
 from rest_framework import serializers
 from django.db.models import Prefetch
 from .models import (
-    ActionLogs, CourseModules, Courses, Main2FALog, Permission, Users, Role, 
+    ActionLogs, CourseInteractions, CourseModules, Courses, Main2FALog, Organizations, Permission, Users, Role, 
     QuizQuestions, ModuleTopics, ModuleQuizes, QuizResponses, CourseDiscussions,
     UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
 )
+from django.db.models import Avg, Count
 
 class PermissionsSerializer(serializers.ModelSerializer):
     class Meta:
@@ -61,8 +62,23 @@ class RoleSerializer(serializers.ModelSerializer):
             role.permission.set(Permission.objects.filter(guid__in=permission_ids))
         return role
 
+class OrganizationsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Organizations
+        fields = '__all__'
+        depth = 1
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name, field in self.fields.items():
+            if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at'):
+                field.required = False
+            else: 
+                field.required = True
+
 class UserSerializer(serializers.ModelSerializer):
     role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    organization = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     
     class Meta:
         model = Users
@@ -141,6 +157,16 @@ class UserSerializer(serializers.ModelSerializer):
             }
         else:
             data['role'] = None
+        
+        if instance.organization:
+            data['organization'] = {
+                'guid': str(instance.organization.guid),
+                'org_name': instance.organization.org_name,
+                'is_active': instance.organization.is_active,
+                'member_id': instance.organization.member_id,
+            }
+        else:
+            data['organization'] = None
         return data
 
 class CourseModuleSerializer(serializers.ModelSerializer):
@@ -370,13 +396,56 @@ class CourseModuleSerializer(serializers.ModelSerializer):
             )
         
         return queryset
-    
+
+class CourseReviewSerializer(serializers.ModelSerializer):
+    user = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CourseInteractions
+        fields = [
+            "guid",
+            "rating",
+            "review_text",
+            "created_at",
+            "user"
+        ]
+
+    def get_user(self, obj):
+        if not obj.user:
+            return None
+
+        return {
+            "guid": obj.user.guid,
+            "first_name": obj.user.first_name,
+            "last_name": obj.user.last_name,
+            "image": obj.user.image.url if obj.user.image else None
+        }
+
+class CourseInteractionSummarySerializer(serializers.Serializer):
+
+    likes = serializers.IntegerField()
+    saves = serializers.IntegerField()
+    average_rating = serializers.FloatField()
+    ratings_count = serializers.IntegerField()
+    reviews_count = serializers.IntegerField()
+
+    user_liked = serializers.BooleanField()
+    user_saved = serializers.BooleanField()
+    user_rating = serializers.IntegerField(allow_null=True)
+
+class CourseInteractionResponseSerializer(serializers.Serializer):
+
+    summary = CourseInteractionSummarySerializer()
+    reviews = CourseReviewSerializer(many=True)
+
 class CourseSerializer(serializers.ModelSerializer):
     total_duration = serializers.CharField(read_only=True)
     course_progress = serializers.SerializerMethodField()
     modules = CourseModuleSerializer(source='coursemodules_set', many=True, read_only=True)
     instructor = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     instructor_details = serializers.SerializerMethodField(read_only=True)
+    course_iteractions = serializers.SerializerMethodField(read_only=True)
+
 
     class Meta:
         model = Courses
@@ -385,7 +454,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'expertise_level', 'prerequisites', 'objectives', 'isPaid', 
             'amount', 'currency', 'isFeatured', 'status', 'instructor',
             'instructor_details', 'total_duration', 'course_progress', 'modules',
-            'created_at', 'created_by', 'updated_at', 'updated_by', 
+            'created_at', 'created_by', 'updated_at', 'updated_by','learning_mode','venue','training_date',
             'deleted_at', 'deleted_by'
         ]
         depth = 0  # Reduced depth to prevent over-fetching
@@ -430,6 +499,40 @@ class CourseSerializer(serializers.ModelSerializer):
             return 0
         return obj.course_progress(user)
     
+    def get_course_iteractions(self, obj):
+        user = self.context.get("user")
+
+        interactions = CourseInteractions.objects.filter(course=obj)
+
+        likes = interactions.filter(interaction_type="like").count()
+        saves = interactions.filter(interaction_type="save").count()
+
+        ratings = interactions.filter(interaction_type="rating")
+
+        avg_rating = ratings.aggregate(avg=Avg("rating"))["avg"]
+        ratings_count = ratings.count()
+
+        reviews_count = interactions.filter(interaction_type="review").count()
+
+        data = {
+            "likes": likes,
+            "saves": saves,
+            "average_rating": round(avg_rating, 1) if avg_rating else 0,
+            "ratings_count": ratings_count,
+            "reviews_count": reviews_count,
+        }
+
+        if user and user.is_authenticated:
+            data.update({
+                "user_liked": interactions.filter(user=user, interaction_type="like").exists(),
+                "user_saved": interactions.filter(user=user, interaction_type="save").exists(),
+                "user_rating": interactions.filter(
+                    user=user, interaction_type="rating"
+                ).values_list("rating", flat=True).first()
+            })
+
+        return data
+    
     @classmethod
     def setup_eager_loading(cls, queryset, user=None):
         """Optimize queryset to prevent N+1 queries"""
@@ -460,7 +563,85 @@ class CourseSerializer(serializers.ModelSerializer):
             data['instructor'] = None
         return data
 
+class CourseInteractSerializer(serializers.Serializer):
 
+    course_guid = serializers.UUIDField()
+    interaction_type = serializers.ChoiceField(
+        choices=["like", "save", "rating", "review"]
+    )
+
+    rating = serializers.IntegerField(required=False)
+    review_text = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+
+        interaction_type = data["interaction_type"]
+
+        if interaction_type == "rating" and "rating" not in data:
+            raise serializers.ValidationError({
+                "rating": "Rating is required."
+            })
+
+        if interaction_type == "review" and not data.get("review_text"):
+            raise serializers.ValidationError({
+                "review_text": "Review text is required."
+            })
+
+        return data
+
+    def create(self, validated_data):
+
+        user = self.context["request"].user
+        course = Courses.objects.get(guid=validated_data["course_guid"])
+        interaction_type = validated_data["interaction_type"]
+
+        interaction = CourseInteractions.objects.filter(
+            user=user,
+            course=course,
+            interaction_type=interaction_type
+        ).first()
+
+        # Toggle for like/save
+        if interaction_type in ["like", "save"]:
+            if interaction:
+                interaction.delete()
+                return {"removed": True, "interaction_type": interaction_type}
+
+            CourseInteractions.objects.create(
+                user=user,
+                course=course,
+                interaction_type=interaction_type
+            )
+
+            return {"removed": False, "interaction_type": interaction_type}
+
+        # Rating (update if exists)
+        if interaction_type == "rating":
+            if interaction:
+                interaction.rating = validated_data["rating"]
+                interaction.save()
+            else:
+                interaction = CourseInteractions.objects.create(
+                    user=user,
+                    course=course,
+                    interaction_type="rating",
+                    rating=validated_data["rating"]
+                )
+
+        # Review (update if exists)
+        if interaction_type == "review":
+            if interaction:
+                interaction.review_text = validated_data["review_text"]
+                interaction.save()
+            else:
+                interaction = CourseInteractions.objects.create(
+                    user=user,
+                    course=course,
+                    interaction_type="review",
+                    review_text=validated_data["review_text"]
+                )
+
+        return interaction
      
 class Main2FASerializer(serializers.ModelSerializer):
     class Meta:

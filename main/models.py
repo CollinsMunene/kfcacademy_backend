@@ -89,6 +89,26 @@ def get_default_role():
         pass
     return None
 
+class Organizations(models.Model):
+    guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
+    member_id = models.CharField(max_length=40, null=False,blank=False)
+    org_name = models.CharField(max_length=100,null=False,blank=False)
+    address = models.CharField(max_length=100,null=True,blank=True)
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.CharField(max_length=200,blank=True,null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.CharField(max_length=200,blank=True,null=True)
+    deleted_at = models.DateTimeField(blank=True,null=True)
+    deleted_by = models.CharField(max_length=200,blank=True,null=True)
+
+    class Meta:
+        db_table = 'organizations'
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
+
 class Users(AbstractUser):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     image = models.ImageField(default='default.png', blank=True, null=True, upload_to=user_upload_to)
@@ -104,6 +124,7 @@ class Users(AbstractUser):
     is_active = models.BooleanField(default=True)
     is_first_time_login = models.BooleanField(default=True)
     role = models.ForeignKey(Role,on_delete=models.SET_DEFAULT, default=get_default_role,blank=True,null=True)
+    organization =  models.ForeignKey(Organizations,on_delete=models.SET_NULL,blank=True,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.CharField(max_length=200,blank=True,null=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -201,6 +222,11 @@ class Courses(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     currency = models.CharField(max_length=10,blank=True,null=True)
     isFeatured = models.BooleanField(default=False)
+
+    learning_mode = models.CharField(max_length=10,blank=True,null=True)
+    venue = models.CharField(max_length=10,blank=True,null=True)
+    training_date = models.DateTimeField(blank=True,null=True)
+
     order = models.IntegerField(blank=True,null=True, default=0)
     instructor = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.SET_NULL,blank=True,null=True,related_name='instructor')
     status = models.CharField(max_length=200,blank=False,null=False)
@@ -678,6 +704,29 @@ class UsersCourseEnrollment(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
+class CourseInteractions(models.Model): 
+    guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
+    course = models.ForeignKey(
+        Courses,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rating = models.IntegerField(null=True, blank=True)
+    review_text = models.CharField(max_length=200,blank=True,null=True)
+    interaction_type = models.CharField(max_length=50,blank=False,null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'course_interaction'
+        unique_together = ('user', 'course','interaction_type')
+        indexes = [
+            models.Index(fields=['course', 'interaction_type']),
+            models.Index(fields=['user', 'interaction_type']),
+        ]
+
 
 class Main2FALog(models.Model): 
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)

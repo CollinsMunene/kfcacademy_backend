@@ -25,7 +25,7 @@ from main.models import (
     UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
 )
 from main.serializers import (
-    ActionLogsSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
+    ActionLogsSerializer, CourseInteractSerializer, CourseInteractionResponseSerializer, CourseReviewSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
     RoleSerializer, UserSerializer, CourseSerializer, CourseModuleSerializer,
     QuizQuestionsSerializer, ModuleTopicSerializer, ModuleQuizSerializer,
     QuizResponseSerializer, CourseEnrollmentSerializer, UserProgressSerializer,
@@ -34,7 +34,7 @@ from main.serializers import (
 )
 from main.signals import log_soft_delete
 from rest_framework.parsers import MultiPartParser, FormParser
-
+from django.db.models import Avg, Count
 
 # Create your views here.
 
@@ -1826,6 +1826,108 @@ class CourseProgress(ProtectedAuthView):
         
         return debug_info
 
+class CourseInteractions(ProtectedAuthView):
+    serializer_class = CourseInteractionResponseSerializer
+    
+    def get(self, request, course_guid, format=None):
+
+        course = get_object_or_404(Courses, guid=course_guid)
+
+        interactions = CourseInteractions.objects.filter(
+            course=course
+        ).select_related("user")
+
+        # likes
+        likes = interactions.filter(interaction_type="like").count()
+
+        # saves
+        saves = interactions.filter(interaction_type="save").count()
+
+        # ratings
+        ratings = interactions.filter(interaction_type="rating")
+
+        avg_rating = ratings.aggregate(avg=Avg("rating"))["avg"]
+        ratings_count = ratings.count()
+
+        # reviews
+        reviews = interactions.filter(interaction_type="review")
+
+        reviews_count = reviews.count()
+
+        user = request.user
+
+        summary = {
+            "likes": likes,
+            "saves": saves,
+            "average_rating": round(avg_rating, 1) if avg_rating else 0,
+            "ratings_count": ratings_count,
+            "reviews_count": reviews_count,
+            "user_liked": interactions.filter(
+                user=user,
+                interaction_type="like"
+            ).exists(),
+            "user_saved": interactions.filter(
+                user=user,
+                interaction_type="save"
+            ).exists(),
+            "user_rating": interactions.filter(
+                user=user,
+                interaction_type="rating"
+            ).values_list("rating", flat=True).first()
+        }
+
+        response_data = {
+            "summary": summary,
+            "reviews": CourseReviewSerializer(reviews, many=True).data
+        }
+
+        serializer = CourseInteractionResponseSerializer(response_data)
+
+        return Response(serializer.data, status=HTTP_200_OK)
+
+
+class CourseInteractView(ProtectedAuthView):
+
+    serializer_class = CourseInteractSerializer
+
+    def post(self, request):
+
+        serializer = self.serializer_class(
+            data=request.data,
+            context={"request": request}
+        )
+
+        if serializer.is_valid():
+
+            result = serializer.save()
+
+            return Response(
+                {
+                    "message": "Interaction processed successfully",
+                    "result": result
+                }
+            )
+
+        return Response(serializer.errors, status=400)
+
+class DeleteCourseReviewView(ProtectedAuthView):
+
+    def delete(self, request, review_guid):
+
+        review = get_object_or_404(
+            CourseInteractions,
+            guid=review_guid,
+            user=request.user,
+            interaction_type="review"
+        )
+
+        review.delete()
+
+        return Response(
+            {"message": "Review deleted successfully"},
+            status=HTTP_204_NO_CONTENT
+        )
+     
 class SubmitQuizResponse(ProtectedAuthView):
     serializer_class = QuizResponseSerializer
     
