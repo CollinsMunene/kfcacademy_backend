@@ -453,7 +453,7 @@ class CourseSerializer(serializers.ModelSerializer):
             'id', 'guid', 'title', 'description', 'image', 'tags', 
             'expertise_level', 'prerequisites', 'objectives', 'isPaid', 
             'amount', 'currency', 'isFeatured', 'status', 'instructor',
-            'instructor_details', 'total_duration', 'course_progress', 'modules',
+            'instructor_details','course_iteractions', 'total_duration', 'course_progress', 'modules',
             'created_at', 'created_by', 'updated_at', 'updated_by','learning_mode','venue','training_date',
             'deleted_at', 'deleted_by'
         ]
