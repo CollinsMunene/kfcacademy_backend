@@ -84,7 +84,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = Users
         fields = (
             'guid', 'image', 'email', 'first_name', 'last_name',
-            'phone_number', 'bio','password', 'role', 'is_active',
+            'phone_number', 'bio','password', 'role', 'is_active','organization',
             'is_first_time_login', 'created_at', 'created_by',
             'updated_at', 'updated_by'
         )
@@ -562,6 +562,10 @@ class CourseSerializer(serializers.ModelSerializer):
         else:
             data['instructor'] = None
         return data
+
+class CertificateRequestSerializer(serializers.Serializer):
+    course_guid = serializers.UUIDField()
+    user_guid = serializers.UUIDField()
 
 class CourseInteractSerializer(serializers.Serializer):
 

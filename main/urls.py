@@ -102,7 +102,8 @@ urlpatterns = [
     re_path(r'^courses/interactions/$', views.CourseInteractView.as_view(), name='create_course_interactions'),
     re_path(r'^courses/(?P<course_guid>[\w-]+)/interactions/$', views.DeleteCourseReviewView.as_view(), name='delete_course_interactions'),   
     re_path(r'^courses/(?P<course_guid>[\w-]+)/interactions/$', views.CourseInteractions.as_view(), name='course_interactions'),
-    
+
+    re_path(r'^courses/certificate/$', views.CourseCertificate.as_view(), name='course_certificate'),
     # Quiz Responses
     re_path(r'^quiz/submit/$', views.SubmitQuizResponse.as_view(), name='submit_quiz_response'),
     re_path(r'^quizzes/(?P<quiz_guid>[\w-]+)/results/$', views.GetQuizResults.as_view(), name='quiz_results'),

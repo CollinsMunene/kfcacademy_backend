@@ -25,7 +25,7 @@ from main.models import (
     UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
 )
 from main.serializers import (
-    ActionLogsSerializer, CourseInteractSerializer, CourseInteractionResponseSerializer, CourseReviewSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
+    ActionLogsSerializer, CertificateRequestSerializer, CourseInteractSerializer, CourseInteractionResponseSerializer, CourseReviewSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
     RoleSerializer, UserSerializer, CourseSerializer, CourseModuleSerializer,
     QuizQuestionsSerializer, ModuleTopicSerializer, ModuleQuizSerializer,
     QuizResponseSerializer, CourseEnrollmentSerializer, UserProgressSerializer,
@@ -35,6 +35,9 @@ from main.serializers import (
 from main.signals import log_soft_delete
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.db.models import Avg, Count
+from django.template.loader import render_to_string
+from django.http import HttpResponse
+from weasyprint import HTML
 
 # Create your views here.
 
@@ -1927,7 +1930,45 @@ class DeleteCourseReviewView(ProtectedAuthView):
             {"message": "Review deleted successfully"},
             status=HTTP_204_NO_CONTENT
         )
-     
+
+
+class CourseCertificate(ProtectedAuthView):
+    serializer_class = CertificateRequestSerializer 
+class GenerateCertificateView(ProtectedAuthView):
+
+    serializer_class = CertificateRequestSerializer
+
+    def post(self, request):
+        serializer = self.serializer_class(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+
+        course_guid = serializer.validated_data["course_guid"]
+        user_guid = serializer.validated_data["user_guid"]
+
+        course = get_object_or_404(Courses, guid=course_guid)
+        user = get_object_or_404(Users, guid=user_guid)
+
+        if not UsersCourseEnrollment.objects.filter(user=user, course=course).exists():
+            return Response({"error": "User has not completed this course."}, status=400)
+
+        context = {
+            "user_name": f"{user.first_name} {user.last_name}",
+            "course_title": course.title,
+            "completion_date": course.training_date.strftime("%B %d, %Y") if course.training_date else "N/A",
+            "organization_name": "CropCare Training"
+        }
+
+        html_string = render_to_string("certificate_template.html", context)
+        pdf_file = HTML(string=html_string).write_pdf()
+
+        response = HttpResponse(pdf_file, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="certificate_{user.guid}.pdf"'
+
+        return response
+
+
 class SubmitQuizResponse(ProtectedAuthView):
     serializer_class = QuizResponseSerializer
     
