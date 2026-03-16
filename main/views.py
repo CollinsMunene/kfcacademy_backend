@@ -1960,7 +1960,7 @@ class GenerateCertificateView(ProtectedAuthView):
             "organization_name": "CropCare Training"
         }
 
-        html_string = render_to_string("certificate_template.html", context)
+        html_string = render_to_string("certificates/main.html", context)
         pdf_file = HTML(string=html_string).write_pdf()
 
         response = HttpResponse(pdf_file, content_type="application/pdf")
