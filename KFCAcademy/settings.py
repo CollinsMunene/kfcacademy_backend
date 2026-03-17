@@ -348,6 +348,9 @@ if DEBUG:
 else:
     FRONTEND_URL = 'https://academy.kenyaflowercouncil.org'  # Frontend URL for production
 
+# External organization API - returns org details by member_id
+ORGANIZATION_API_URL = os.environ.get('ORGANIZATION_API_URL', '')
+
 
 if DEBUG:
     CELERY_BROKER_URL = "redis://:statusString123@localhost:6379/0"

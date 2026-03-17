@@ -7,6 +7,10 @@ app_name = 'main'
 
 urlpatterns = [
     # User
+    # Organization
+    re_path(r'^organization/sync/$', views.SyncOrganization.as_view(), name='sync_organization'),
+
+    # User
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),
     re_path(r'^user/register/$', views.UserRegister.as_view(), name='user_register'),
     re_path(r'^user/by_guid/(?P<guid>[\w-]+)/$', views.OneUser.as_view(), name='one_user'),
@@ -103,7 +107,7 @@ urlpatterns = [
     re_path(r'^courses/(?P<course_guid>[\w-]+)/interactions/$', views.DeleteCourseReviewView.as_view(), name='delete_course_interactions'),   
     re_path(r'^courses/(?P<course_guid>[\w-]+)/interactions/$', views.CourseInteractions.as_view(), name='course_interactions'),
 
-    re_path(r'^courses/certificate/$', views.CourseCertificate.as_view(), name='course_certificate'),
+    re_path(r'^courses/(?P<course_guid>[\w-]+)/certificate/$', views.CourseCertificate.as_view(), name='course_certificate'),
     # Quiz Responses
     re_path(r'^quiz/submit/$', views.SubmitQuizResponse.as_view(), name='submit_quiz_response'),
     re_path(r'^quizzes/(?P<quiz_guid>[\w-]+)/results/$', views.GetQuizResults.as_view(), name='quiz_results'),

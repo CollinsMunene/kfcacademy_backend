@@ -2,6 +2,7 @@
 import os
 import random
 import re
+import requests
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.core.files.uploadedfile import InMemoryUploadedFile
@@ -20,7 +21,7 @@ from KFCAcademy.tasks import send_email
 from KFCAcademy.utils.utils import delete_cloudflare_file_task, delete_file_from_minio_task, get_from_minio, upload_file_to_minio_task, upload_image_to_cloudflare_task, upload_video_to_cloudflare_task
 from KFCAcademy.views import FreeAuthView, ProtectedAuthView, PublicAuthView
 from main.models import (
-    ActionLogs, Main2FALog, Permission, Role, Users, Courses, CourseModules, 
+    ActionLogs, Main2FALog, Organizations, Permission, Role, Users, Courses, CourseModules,
     ModuleTopics, ModuleQuizes, QuizQuestions, QuizResponses, CourseDiscussions,
     UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
 )
@@ -100,6 +101,18 @@ class UserRegister(FreeAuthView):
                     "data": "User with the email already exists"
                 }, status=HTTP_400_BAD_REQUEST)
 
+            # Resolve organization_guid to org instance if provided
+            org = None
+            organization_guid = request.data.get('organization_guid')
+            if organization_guid:
+                try:
+                    org = Organizations.objects.get(guid=organization_guid, deleted_at__isnull=True)
+                except Organizations.DoesNotExist:
+                    return Response({
+                        "status": "Failed",
+                        "message": "Organization not found",
+                        "data": "No active organization matches the provided organization_guid"
+                    }, status=HTTP_400_BAD_REQUEST)
 
             # Username & password generation
             username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
@@ -113,7 +126,7 @@ class UserRegister(FreeAuthView):
                 phone = str(request.data['phone_number'])
                 # Keep only digits
                 phone_digits = re.sub(r'\D', '', phone)
-                
+
                 if not phone_digits:  # invalid phone
                     request.data['phone_number'] = None
                 elif phone_digits.startswith('0'):
@@ -122,10 +135,15 @@ class UserRegister(FreeAuthView):
                     request.data['phone_number'] = phone_digits
                 else:
                     request.data['phone_number'] = f"254{phone_digits}"
-            
+
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
                 user = serializer.save(created_by="self", username=username)
+
+                # Link organization if provided
+                if org:
+                    user.organization = org
+                    user.save(update_fields=['organization'])
 
                 # Generate profile image
                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
@@ -359,6 +377,101 @@ class AdminReactivateUser(ProtectedAuthView):
                 "data": "User not found"
             }, status=HTTP_400_BAD_REQUEST)
  
+class SyncOrganization(FreeAuthView):
+    """
+    Accepts a member_id, fetches organization details from an external API,
+    creates/updates the organization in our DB, then emails the org contact
+    a frontend link with the org guid appended.
+    """
+
+    def post(self, request, format=None):
+        member_id = request.data.get('member_id')
+        if not member_id:
+            return Response({
+                "status": "Failed",
+                "message": "member_id is required",
+                "data": "member_id is required"
+            }, status=HTTP_400_BAD_REQUEST)
+
+        org_api_url = settings.ORGANIZATION_API_URL
+        if not org_api_url:
+            return Response({
+                "status": "Failed",
+                "message": "Organization API URL is not configured",
+                "data": "ORGANIZATION_API_URL setting is missing"
+            }, status=HTTP_400_BAD_REQUEST)
+
+        # Fetch organization details from external API
+        try:
+            resp = requests.get(f"{org_api_url}/{member_id}", timeout=30)
+            resp.raise_for_status()
+            org_data = resp.json()
+        except requests.exceptions.RequestException as e:
+            return Response({
+                "status": "Failed",
+                "message": "Failed to fetch organization details from external API",
+                "data": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
+
+        # Map external API response to our model fields
+        org_name = org_data.get('org_name') or org_data.get('name')
+        address = org_data.get('address', '')
+        contact_email = org_data.get('email') or org_data.get('contact_email')
+
+        if not org_name:
+            return Response({
+                "status": "Failed",
+                "message": "External API did not return a valid org_name",
+                "data": org_data
+            }, status=HTTP_400_BAD_REQUEST)
+
+        # Create or update organization
+        org, created = Organizations.objects.get_or_create(
+            member_id=member_id,
+            defaults={
+                'org_name': org_name,
+                'address': address,
+                'is_active': True,
+            }
+        )
+        if not created:
+            org.org_name = org_name
+            org.address = address
+            org.is_active = True
+            org.save()
+
+        # Build the registration link with org guid
+        frontend_link = f"{settings.FRONTEND_URL}/register?org={org.guid}"
+
+        # Send email to org contact if an email is available
+        if contact_email:
+            send_email.delay(
+                subject="Your Organization Has Been Registered on KFC Academy",
+                context={
+                    "user": org_name,
+                    "message1": f"Your organization '{org_name}' has been successfully registered on the KFC Academy Platform.",
+                    "message2": "Click the button below to complete your team's registration using your organization link.",
+                    "link": frontend_link,
+                },
+                template='email_with_button.html',
+                to_email=contact_email
+            )
+
+        return Response({
+            "status": "ok",
+            "message": "Organization synced successfully",
+            "data": {
+                "guid": str(org.guid),
+                "member_id": org.member_id,
+                "org_name": org.org_name,
+                "address": org.address,
+                "is_active": org.is_active,
+                "registration_link": frontend_link,
+                "created": created,
+            }
+        }, status=HTTP_201_CREATED if created else HTTP_200_OK)
+
+
 class UpdateUserProfileImage(ProtectedAuthView):
     parser_classes = (MultiPartParser, FormParser)
 
@@ -1933,31 +2046,25 @@ class DeleteCourseReviewView(ProtectedAuthView):
 
 
 class CourseCertificate(ProtectedAuthView):
-    serializer_class = CertificateRequestSerializer 
-class GenerateCertificateView(ProtectedAuthView):
-
     serializer_class = CertificateRequestSerializer
 
-    def post(self, request):
+    def post(self, request,course_guid):
         serializer = self.serializer_class(data=request.data)
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
 
-        course_guid = serializer.validated_data["course_guid"]
-        user_guid = serializer.validated_data["user_guid"]
 
         course = get_object_or_404(Courses, guid=course_guid)
-        user = get_object_or_404(Users, guid=user_guid)
+        user = get_object_or_404(Users, guid=request.user.guid)
 
         if not UsersCourseEnrollment.objects.filter(user=user, course=course).exists():
             return Response({"error": "User has not completed this course."}, status=400)
 
         context = {
-            "user_name": f"{user.first_name} {user.last_name}",
-            "course_title": course.title,
-            "completion_date": course.training_date.strftime("%B %d, %Y") if course.training_date else "N/A",
-            "organization_name": "CropCare Training"
+            "candidate": f"{user.first_name} {user.last_name}",
+            "title": course.title,
+            "completion_date": course.training_date.strftime("%B %d, %Y") if course.training_date else "N/A"
         }
 
         html_string = render_to_string("certificates/main.html", context)

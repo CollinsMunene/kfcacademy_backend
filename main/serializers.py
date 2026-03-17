@@ -121,7 +121,7 @@ class UserSerializer(serializers.ModelSerializer):
         """Validate role field - convert UUID string to Role instance"""
         if value is None or value == '':
             return None
-            
+
         try:
             # Try to get the role by its GUID
             role = Role.objects.get(guid=value)
@@ -130,6 +130,19 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("Role with the provided GUID does not exist")
         except ValueError:
             raise serializers.ValidationError("Invalid UUID format for role")
+
+    def validate_organization(self, value):
+        """Validate organization field - convert UUID string to Organizations instance"""
+        if value is None or value == '':
+            return None
+
+        try:
+            org = Organizations.objects.get(guid=value, deleted_at__isnull=True)
+            return org
+        except Organizations.DoesNotExist:
+            raise serializers.ValidationError("Organization with the provided GUID does not exist")
+        except ValueError:
+            raise serializers.ValidationError("Invalid UUID format for organization")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
