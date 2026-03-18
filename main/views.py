@@ -393,25 +393,30 @@ class SyncOrganization(FreeAuthView):
                 "data": "member_id is required"
             }, status=HTTP_400_BAD_REQUEST)
 
-        org_api_url = settings.ORGANIZATION_API_URL
-        if not org_api_url:
-            return Response({
-                "status": "Failed",
-                "message": "Organization API URL is not configured",
-                "data": "ORGANIZATION_API_URL setting is missing"
-            }, status=HTTP_400_BAD_REQUEST)
+        # org_api_url = settings.ORGANIZATION_API_URL
+        # if not org_api_url:
+        #     return Response({
+        #         "status": "Failed",
+        #         "message": "Organization API URL is not configured",
+        #         "data": "ORGANIZATION_API_URL setting is missing"
+        #     }, status=HTTP_400_BAD_REQUEST)
 
-        # Fetch organization details from external API
-        try:
-            resp = requests.get(f"{org_api_url}/{member_id}", timeout=30)
-            resp.raise_for_status()
-            org_data = resp.json()
-        except requests.exceptions.RequestException as e:
-            return Response({
-                "status": "Failed",
-                "message": "Failed to fetch organization details from external API",
-                "data": str(e)
-            }, status=HTTP_400_BAD_REQUEST)
+        # # Fetch organization details from external API
+        # try:
+        #     resp = requests.get(f"{org_api_url}/{member_id}", timeout=30)
+        #     resp.raise_for_status()
+        #     org_data = resp.json()
+        # except requests.exceptions.RequestException as e:
+        #     return Response({
+        #         "status": "Failed",
+        #         "message": "Failed to fetch organization details from external API",
+        #         "data": str(e)
+        #     }, status=HTTP_400_BAD_REQUEST)
+        org_data = {
+            "org_name":"Devligence",
+            "address":"TWX",
+            "email":"info@devligence.com"
+        }
 
         # Map external API response to our model fields
         org_name = org_data.get('org_name') or org_data.get('name')
@@ -2046,14 +2051,8 @@ class DeleteCourseReviewView(ProtectedAuthView):
 
 
 class CourseCertificate(ProtectedAuthView):
-    serializer_class = CertificateRequestSerializer
 
     def post(self, request,course_guid):
-        serializer = self.serializer_class(data=request.data)
-
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-
 
         course = get_object_or_404(Courses, guid=course_guid)
         user = get_object_or_404(Users, guid=request.user.guid)

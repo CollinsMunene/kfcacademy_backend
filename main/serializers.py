@@ -576,9 +576,6 @@ class CourseSerializer(serializers.ModelSerializer):
             data['instructor'] = None
         return data
 
-class CertificateRequestSerializer(serializers.Serializer):
-    course_guid = serializers.UUIDField()
-    user_guid = serializers.UUIDField()
 
 class CourseInteractSerializer(serializers.Serializer):
 
