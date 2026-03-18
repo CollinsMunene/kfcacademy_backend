@@ -224,7 +224,7 @@ class Courses(models.Model):
     isFeatured = models.BooleanField(default=False)
 
     learning_mode = models.CharField(max_length=10,blank=True,null=True)
-    venue = models.CharField(max_length=10,blank=True,null=True)
+    venue = models.CharField(max_length=50,blank=True,null=True)
     training_date = models.DateTimeField(blank=True,null=True)
 
     order = models.IntegerField(blank=True,null=True, default=0)
