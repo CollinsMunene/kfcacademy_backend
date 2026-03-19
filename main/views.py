@@ -2051,7 +2051,6 @@ class DeleteCourseReviewView(ProtectedAuthView):
 
 
 class CourseCertificate(ProtectedAuthView):
-
     def post(self, request,course_guid):
 
         course = get_object_or_404(Courses, guid=course_guid)
