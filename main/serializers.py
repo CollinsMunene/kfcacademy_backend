@@ -1177,7 +1177,7 @@ class PublicCourseSerializer(serializers.ModelSerializer):
         fields = [
             'guid', 'title', 'description', 'image', 'tags', 'expertise_level',
             'isPaid', 'amount', 'currency', 'isFeatured', 'instructor_name', 
-            'instructor_image', 'total_duration','created_at', 'updated_at'
+            'instructor_image', 'total_duration','created_at', 'updated_at','learning_mode','venue','training_date',
         ]
 
     def get_instructor_name(self, obj):
@@ -1327,6 +1327,9 @@ class EnrolledCourseSerializer(serializers.ModelSerializer):
     amount = serializers.DecimalField(source='course.amount', max_digits=10, decimal_places=2, read_only=True)
     currency = serializers.CharField(source='course.currency', read_only=True)
     total_duration = serializers.CharField(source='course.total_duration', read_only=True)
+    learning_mode = serializers.CharField(source='course.learning_mode', read_only=True)
+    venue = serializers.CharField(source='course.venue', read_only=True)
+    training_date = serializers.DateTimeField(source='course.training_date', read_only=True)
     image = serializers.SerializerMethodField()
     status = serializers.CharField(source='course.status', read_only=True)
     course_progress = serializers.SerializerMethodField()
