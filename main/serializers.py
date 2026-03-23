@@ -1339,7 +1339,7 @@ class EnrolledCourseSerializer(serializers.ModelSerializer):
         model = UsersCourseEnrollment
         fields = [
             'guid', 'title', 'description', 'expertise_level', 'isPaid', 'amount', 'currency', 'total_duration', 'image', 'status', 
-            'enrolled_at', 'course_progress', 'instructor','created_at', 'updated_at'
+            'enrolled_at', 'course_progress', 'instructor','created_at', 'updated_at','learning_mode','venue','training_date'
         ]
         read_only_fields = ['enrolled_at', 'created_at', 'updated_at']
     
