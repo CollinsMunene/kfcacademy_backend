@@ -26,7 +26,7 @@ from main.models import (
     UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
 )
 from main.serializers import (
-    ActionLogsSerializer, CertificateRequestSerializer, CourseInteractSerializer, CourseInteractionResponseSerializer, CourseReviewSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
+    ActionLogsSerializer, CourseInteractSerializer, CourseInteractionResponseSerializer, CourseReviewSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
     RoleSerializer, UserSerializer, CourseSerializer, CourseModuleSerializer,
     QuizQuestionsSerializer, ModuleTopicSerializer, ModuleQuizSerializer,
     QuizResponseSerializer, CourseEnrollmentSerializer, UserProgressSerializer,
