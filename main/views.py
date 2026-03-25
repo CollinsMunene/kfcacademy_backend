@@ -103,7 +103,7 @@ class UserRegister(FreeAuthView):
 
             # Resolve organization_guid to org instance if provided
             org = None
-            organization_guid = request.data.get('organization_guid')
+            organization_guid = request.data.get('organization')
             if organization_guid:
                 try:
                     org = Organizations.objects.get(guid=organization_guid, deleted_at__isnull=True)

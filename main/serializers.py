@@ -147,7 +147,7 @@ class UserSerializer(serializers.ModelSerializer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
-            if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at','phone_number','image','role','bio'):
+            if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at','phone_number','image','role','bio',"organization"):
                 field.required = False
             else: 
                 field.required = True
