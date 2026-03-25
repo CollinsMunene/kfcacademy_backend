@@ -528,12 +528,15 @@ class CourseSerializer(serializers.ModelSerializer):
 
         reviews_count = interactions.filter(interaction_type="review").count()
 
+        reviews = interactions.filter(interaction_type="review")
+
         data = {
             "likes": likes,
             "saves": saves,
             "average_rating": round(avg_rating, 1) if avg_rating else 0,
             "ratings_count": ratings_count,
             "reviews_count": reviews_count,
+            "reviews":reviews
         }
 
         if user and user.is_authenticated:
@@ -542,8 +545,7 @@ class CourseSerializer(serializers.ModelSerializer):
                 "user_saved": interactions.filter(user=user, interaction_type="save").exists(),
                 "user_rating": interactions.filter(
                     user=user, interaction_type="rating"
-                ).values_list("rating", flat=True).first(),
-                "user_reviews":interactions.filter(user=user, interaction_type="review")
+                ).values_list("rating", flat=True).first()
             })
 
         return data
@@ -1173,13 +1175,14 @@ class PublicCourseSerializer(serializers.ModelSerializer):
     instructor_name = serializers.SerializerMethodField()
     instructor_image = serializers.SerializerMethodField()
     total_duration = serializers.CharField(read_only=True)
+    course_iteractions = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Courses
         fields = [
             'guid', 'title', 'description', 'image', 'tags', 'expertise_level',
             'isPaid', 'amount', 'currency', 'isFeatured', 'instructor_name', 
-            'instructor_image', 'total_duration','created_at', 'updated_at','learning_mode','venue','training_date',
+            'instructor_image', 'total_duration','created_at', 'updated_at','learning_mode','venue','training_date','course_iteractions',
         ]
 
     def get_instructor_name(self, obj):
@@ -1191,6 +1194,44 @@ class PublicCourseSerializer(serializers.ModelSerializer):
         if obj.instructor and obj.instructor.image.url:
             return obj.instructor.image.url
         return None
+    
+    def get_course_iteractions(self, obj):
+        user = self.context.get("user")
+
+        interactions = CourseInteractions.objects.filter(course=obj)
+
+        likes = interactions.filter(interaction_type="like").count()
+        saves = interactions.filter(interaction_type="save").count()
+
+        ratings = interactions.filter(interaction_type="rating")
+
+        avg_rating = ratings.aggregate(avg=Avg("rating"))["avg"]
+        ratings_count = ratings.count()
+
+        reviews_count = interactions.filter(interaction_type="review").count()
+
+        reviews = interactions.filter(interaction_type="review")
+
+        data = {
+            "likes": likes,
+            "saves": saves,
+            "average_rating": round(avg_rating, 1) if avg_rating else 0,
+            "ratings_count": ratings_count,
+            "reviews_count": reviews_count,
+            "reviews":reviews
+        }
+
+        if user and user.is_authenticated:
+            data.update({
+                "user_liked": interactions.filter(user=user, interaction_type="like").exists(),
+                "user_saved": interactions.filter(user=user, interaction_type="save").exists(),
+                "user_rating": interactions.filter(
+                    user=user, interaction_type="rating"
+                ).values_list("rating", flat=True).first()
+            })
+
+        return data
+    
 
 
 # =============================================================================
