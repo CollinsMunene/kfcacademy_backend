@@ -1999,10 +1999,10 @@ class CourseInteractions(ProtectedAuthView):
 
         response_data = {
             "summary": summary,
-            "reviews": CourseReviewSerializer(reviews, many=True).data
+            "reviews": reviews
         }
 
-        serializer = CourseInteractionResponseSerializer(response_data)
+        serializer = CourseInteractionResponseSerializer(instance=response_data)
 
         return Response(serializer.data, status=HTTP_200_OK)
 
