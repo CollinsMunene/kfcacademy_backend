@@ -14,6 +14,7 @@ urlpatterns = [
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),
     re_path(r'^user/register/$', views.UserRegister.as_view(), name='user_register'),
     re_path(r'^user/by_guid/(?P<guid>[\w-]+)/$', views.OneUser.as_view(), name='one_user'),
+    re_path(r'^user/by_org/(?P<guid>[\w-]+)/$', views.OrgUsers.as_view(), name='one_user'),
     re_path(r'^user/admin_create/$', views.AdminCreateUser.as_view(), name='admin_create_user'),
     re_path(r'^user/admin_reactivate/$', views.AdminReactivateUser.as_view(), name='admin_reactivate_user'),
     re_path(r'^user/update_image/(?P<guid>[\w-]+)/$', views.UpdateUserProfileImage.as_view(), name='update_user_image'),
