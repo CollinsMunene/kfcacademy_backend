@@ -2300,6 +2300,8 @@ class PublicCourses(FreeAuthView):
         Get public course catalog (no authentication required)
         """
         try:
+            user_context = request.user if request.user.is_authenticated else None
+
             queryset = Courses.objects.filter(
                 deleted_at__isnull=True,
                 status='PUBLISHED'  # Only show published courses
@@ -2315,7 +2317,7 @@ class PublicCourses(FreeAuthView):
                 queryset = queryset.filter(expertise_level=expertise_level)
             
             courses = queryset[:20]  # Limit to 20 courses
-            serializer = self.serializer_class(courses, many=True)
+            serializer = self.serializer_class(courses, many=True,context={'user': user_context})
             
             return Response(serializer.data, status=HTTP_200_OK)
             
@@ -2334,13 +2336,14 @@ class FeaturedCourses(FreeAuthView):
         Get featured courses
         """
         try:
+            user_context = request.user if request.user.is_authenticated else None
             queryset = Courses.objects.filter(
                 deleted_at__isnull=True,
                 status='PUBLISHED',
                 isFeatured=True
             ).select_related('instructor')[:10]  # Limit to 10 featured courses
             
-            serializer = self.serializer_class(queryset, many=True)
+            serializer = self.serializer_class(queryset, many=True,context={'user': user_context})
             
             return Response(serializer.data, status=HTTP_200_OK)
             
