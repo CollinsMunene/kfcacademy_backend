@@ -446,7 +446,7 @@ class SyncOrganization(FreeAuthView):
             org.save()
 
         # Build the registration link with org guid
-        frontend_link = f"{settings.FRONTEND_URL}/register?org={org.guid}"
+        frontend_link = f"{settings.FRONTEND_URL}/sign-up?org={org.guid}"
 
         # Send email to org contact if an email is available
         if contact_email:
@@ -2033,11 +2033,11 @@ class CourseInteractView(ProtectedAuthView):
 
 class DeleteCourseReviewView(ProtectedAuthView):
 
-    def delete(self, request, review_guid):
+    def delete(self, request, interaction_guid):
 
         review = get_object_or_404(
             CourseInteractions,
-            guid=review_guid,
+            guid=interaction_guid,
             user=request.user,
             interaction_type="review"
         )

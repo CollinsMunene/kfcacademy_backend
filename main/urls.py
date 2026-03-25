@@ -103,9 +103,9 @@ urlpatterns = [
     re_path(r'^courses/(?P<course_guid>[\w-]+)/progress/$', views.CourseProgress.as_view(), name='course_progress'),
     re_path(r'^topic/complete/$', views.MarkTopicComplete.as_view(), name='mark_topic_complete'),
     
-    re_path(r'^courses/interactions/$', views.CourseInteractView.as_view(), name='create_course_interactions'),
-    re_path(r'^courses/(?P<course_guid>[\w-]+)/interactions/$', views.DeleteCourseReviewView.as_view(), name='delete_course_interactions'),   
-    re_path(r'^courses/(?P<course_guid>[\w-]+)/interactions/$', views.CourseInteractions.as_view(), name='course_interactions'),
+    re_path(r'^interactions/create/$', views.CourseInteractView.as_view(), name='create_course_interactions'),
+    re_path(r'^interactions/(?P<interaction_guid>[\w-]+)/delete/$', views.DeleteCourseReviewView.as_view(), name='delete_course_interactions'),   
+    re_path(r'^interactions/(?P<course_guid>[\w-]+)/all/$', views.CourseInteractions.as_view(), name='course_interactions'),
 
     re_path(r'^courses/(?P<course_guid>[\w-]+)/certificate/$', views.CourseCertificate.as_view(), name='course_certificate'),
     # Quiz Responses
