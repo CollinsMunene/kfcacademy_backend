@@ -536,7 +536,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "average_rating": round(avg_rating, 1) if avg_rating else 0,
             "ratings_count": ratings_count,
             "reviews_count": reviews_count,
-            "reviews":reviews
+            "reviews":CourseReviewSerializer(reviews,many=True).data
         }
 
         if user and user.is_authenticated:
@@ -1221,7 +1221,7 @@ class PublicCourseSerializer(serializers.ModelSerializer):
             "average_rating": round(avg_rating, 1) if avg_rating else 0,
             "ratings_count": ratings_count,
             "reviews_count": reviews_count,
-            "reviews":reviews
+            "reviews":CourseReviewSerializer(reviews,many=True).data
         }
 
         if user and user.is_authenticated:
