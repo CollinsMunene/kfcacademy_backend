@@ -23,7 +23,8 @@ from KFCAcademy.views import FreeAuthView, ProtectedAuthView, PublicAuthView
 from main.models import (
     ActionLogs, Main2FALog, Organizations, Permission, Role, Users, Courses, CourseModules,
     ModuleTopics, ModuleQuizes, QuizQuestions, QuizResponses, CourseDiscussions,
-    UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback
+    UsersCourseEnrollment, UserModuleProgress, QuizSubmissionFeedback,
+    CourseInteractions as CourseInteractionsModel
 )
 from main.serializers import (
     ActionLogsSerializer, CourseInteractSerializer, CourseInteractionResponseSerializer, CourseReviewSerializer, FilePathSerializer, Main2FASerializer, PermissionsSerializer, 
@@ -1954,7 +1955,7 @@ class CourseInteractions(ProtectedAuthView):
 
         course = get_object_or_404(Courses, guid=course_guid)
 
-        interactions = CourseInteractions.objects.filter(
+        interactions = CourseInteractionsModel.objects.filter(
             course=course
         ).select_related("user")
 
@@ -2036,7 +2037,7 @@ class DeleteCourseReviewView(ProtectedAuthView):
     def delete(self, request, interaction_guid):
 
         review = get_object_or_404(
-            CourseInteractions,
+            CourseInteractionsModel,
             guid=interaction_guid,
             user=request.user,
             interaction_type="review"
