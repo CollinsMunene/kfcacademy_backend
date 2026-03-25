@@ -458,6 +458,7 @@ class CourseSerializer(serializers.ModelSerializer):
     instructor = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     instructor_details = serializers.SerializerMethodField(read_only=True)
     course_iteractions = serializers.SerializerMethodField(read_only=True)
+    
 
 
     class Meta:
@@ -541,7 +542,8 @@ class CourseSerializer(serializers.ModelSerializer):
                 "user_saved": interactions.filter(user=user, interaction_type="save").exists(),
                 "user_rating": interactions.filter(
                     user=user, interaction_type="rating"
-                ).values_list("rating", flat=True).first()
+                ).values_list("rating", flat=True).first(),
+                "user_reviews":interactions.filter(user=user, interaction_type="review")
             })
 
         return data
