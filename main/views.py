@@ -64,6 +64,17 @@ class OneUser(ProtectedAuthView):
         one_user = get_object_or_404(Users,guid=guid,deleted_at__isnull=True)
         serializer = UserSerializer(one_user)
         return Response(serializer.data,status=HTTP_200_OK)
+
+class OrgUsers(ProtectedAuthView):
+    serializer_class = UserSerializer
+    
+    def get(self,request,guid,format=None):
+        """
+        Get one User
+        """
+        one_user = get_object_or_404(Users,organization=guid,deleted_at__isnull=True)
+        serializer = UserSerializer(one_user)
+        return Response(serializer.data,status=HTTP_200_OK)
     
 class CurrentUser(ProtectedAuthView):
     serializer_class = UserSerializer
