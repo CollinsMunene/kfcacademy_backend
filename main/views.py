@@ -346,6 +346,106 @@ class AdminReactivateUser(ProtectedAuthView):
                 "data": "User not found"
             }, status=HTTP_400_BAD_REQUEST)
  
+class SyncOrganization(FreeAuthView):
+    """
+    Accepts a member_id, fetches organization details from an external API,
+    creates/updates the organization in our DB, then emails the org contact
+    a frontend link with the org guid appended.
+    """
+
+    def post(self, request, format=None):
+        member_id = request.data.get('member_id')
+        if not member_id:
+            return Response({
+                "status": "Failed",
+                "message": "member_id is required",
+                "data": "member_id is required"
+            }, status=HTTP_400_BAD_REQUEST)
+
+        # org_api_url = settings.ORGANIZATION_API_URL
+        # if not org_api_url:
+        #     return Response({
+        #         "status": "Failed",
+        #         "message": "Organization API URL is not configured",
+        #         "data": "ORGANIZATION_API_URL setting is missing"
+        #     }, status=HTTP_400_BAD_REQUEST)
+
+        # # Fetch organization details from external API
+        # try:
+        #     resp = requests.get(f"{org_api_url}/{member_id}", timeout=30)
+        #     resp.raise_for_status()
+        #     org_data = resp.json()
+        # except requests.exceptions.RequestException as e:
+        #     return Response({
+        #         "status": "Failed",
+        #         "message": "Failed to fetch organization details from external API",
+        #         "data": str(e)
+        #     }, status=HTTP_400_BAD_REQUEST)
+        org_data = {
+            "member_name":"Devligence",
+            "address":"TWX",
+            "primary_email":"info@devligence.com"
+        }
+
+        # Map external API response to our model fields
+        org_name = org_data.get('member_name') or org_data.get('name')
+        address = org_data.get('address', '')
+        contact_email = org_data.get('primary_email') or org_data.get('contact_email')
+
+        if not org_name:
+            return Response({
+                "status": "Failed",
+                "message": "External API did not return a valid org_name",
+                "data": org_data
+            }, status=HTTP_400_BAD_REQUEST)
+
+        # Create or update organization
+        org, created = Organizations.objects.get_or_create(
+            member_id=member_id,
+            defaults={
+                'org_name': org_name,
+                'address': address,
+                'is_active': True,
+            }
+        )
+        if not created:
+            org.org_name = org_name
+            org.address = address
+            org.is_active = True
+            org.save()
+
+        # Build the registration link with org guid
+        frontend_link = f"{settings.FRONTEND_URL}/register?org={org.guid}"
+
+        # Send email to org contact if an email is available
+        if contact_email:
+            send_email.delay(
+                subject="Your Organization Has Been Registered on KFC Academy",
+                context={
+                    "user": org_name,
+                    "message1": f"Your organization '{org_name}' has been successfully registered on the KFC Academy Platform.",
+                    "message2": "Click the button below to complete your team's registration using your organization link.",
+                    "link": frontend_link,
+                },
+                template='email_with_button.html',
+                to_email=contact_email
+            )
+
+        return Response({
+            "status": "ok",
+            "message": "Organization synced successfully",
+            "data": {
+                "guid": str(org.guid),
+                "member_id": org.member_id,
+                "org_name": org.org_name,
+                "address": org.address,
+                "is_active": org.is_active,
+                "registration_link": frontend_link,
+                "created": created,
+            }
+        }, status=HTTP_201_CREATED if created else HTTP_200_OK)
+
+
 class UpdateUserProfileImage(ProtectedAuthView):
     parser_classes = (MultiPartParser, FormParser)
 
