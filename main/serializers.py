@@ -659,7 +659,10 @@ class CourseInteractSerializer(serializers.Serializer):
                     review_text=validated_data["review_text"]
                 )
 
-        return interaction
+        return {
+            "message": "Interaction processed successfully",
+            "result": "ok"
+        }
      
 class Main2FASerializer(serializers.ModelSerializer):
     class Meta:
