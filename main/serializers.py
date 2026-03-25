@@ -539,7 +539,7 @@ class CourseSerializer(serializers.ModelSerializer):
             "reviews":CourseReviewSerializer(reviews,many=True).data
         }
 
-        if user and user.is_authenticated:
+        if user:
             data.update({
                 "user_liked": interactions.filter(user=user, interaction_type="like").exists(),
                 "user_saved": interactions.filter(user=user, interaction_type="save").exists(),
@@ -1224,7 +1224,7 @@ class PublicCourseSerializer(serializers.ModelSerializer):
             "reviews":CourseReviewSerializer(reviews,many=True).data
         }
 
-        if user and user.is_authenticated:
+        if user:
             data.update({
                 "user_liked": interactions.filter(user=user, interaction_type="like").exists(),
                 "user_saved": interactions.filter(user=user, interaction_type="save").exists(),
