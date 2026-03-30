@@ -44,10 +44,10 @@ def serialize_value(val):
                     
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
-    email_plaintext_message = "{}?token={}".format("https://kfc-frontend-wine.vercel.app/reset-password/confirm", reset_password_token.key)
+    email_plaintext_message = "{}?token={}".format("https://academy.kenyaflowercouncil.org/reset-password/confirm", reset_password_token.key)
     message = "Hello "+ str(reset_password_token.user.email)+ ",You have requested a password reset for your account. Please click the button below. The link is valid for one Hour only. If you did not request a password reset, please ignore this email. Thank you."
     send_email.delay(
-        subject="Password Reset for {title}".format(title="kfc Academy"),
+        subject="Password Reset for {title}".format(title="KFC"),
            context={
                         "user":reset_password_token.user.email,
                         "org":"",
@@ -74,7 +74,7 @@ def post_password_reset(sender, user,*args, **kwargs):
     )
     
     send_email.delay(
-        subject="Reset Successful for {title}".format(title="kfc Academy"),
+        subject="Reset Successful for {title}".format(title="KFC"),
            context={
                         "user":user.email,
                         "org":"",
@@ -83,7 +83,7 @@ def post_password_reset(sender, user,*args, **kwargs):
                         "message3":"",
                         "username":user.email,
                         "password":"",
-                        "link":"https://kfc-frontend-wine.vercel.app/login"
+                        "link":"https://academy.kenyaflowercouncil.org/login"
                     },
         template="email_with_button.html",
         to_email=user.email
@@ -105,7 +105,6 @@ def log_soft_delete(instance, user=None):
         action=f'delete {instance.__class__.__name__}',
         extra_details=extra_details
     )
-    print(f'[SOFT DELETE LOG] ActionLog async task queued for soft_delete {instance.__class__.__name__} ({instance.pk})')
 
 @receiver(post_save, sender=QuizResponses)
 def update_module_progress(sender, instance, **kwargs):

@@ -297,7 +297,6 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, "static")
 ]
 
-
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
@@ -322,16 +321,65 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
 EMAIL_HOST = "mail.devligence.com"
 EMAIL_PORT = 587
-EMAIL_HOST_USER = "uat@devligence.com"
+EMAIL_HOST_USER = "kfc@devligence.com"
 EMAIL_HOST_PASSWORD = "Zcr?Fx%1?5]gX+E^"
 EMAIL_USE_SSL = False
 EMAIL_USE_TLS = True  # ⚠️ must be False with 465
-DEFAULT_FROM_EMAIL = '"KFC Academy" <uat@devligence.com>'
+DEFAULT_FROM_EMAIL = '"KFC Academy" <kfc@devligence.com>'
+
+# MinIO Configuration
+MINIO_STORAGE_ENDPOINT = '127.0.0.1:9000'  # Direct connection to MinIO
+MINIO_STORAGE_USE_HTTPS = False 
+
+# MINIO_STORAGE_ENDPOINT = os.getenv('MINIO_STORAGE_ENDPOINT', 'localhost:9000')
+MINIO_STORAGE_ACCESS_KEY = os.getenv('MINIO_STORAGE_ACCESS_KEY', 'E3rFWEtLMSqk8gYq7Zvd')
+MINIO_STORAGE_SECRET_KEY = os.getenv('MINIO_STORAGE_SECRET_KEY', 'LGkzHNF8kNthtM47ScDalgGiPIG02G0o1B4jdaRq')
+MINIO_STORAGE_BUCKET_NAME = os.getenv('MINIO_STORAGE_BUCKET_NAME', 'kfc-academy')
+
+
+if DEBUG:
+    MINIO_PUBLIC_ENDPOINT = 'kfc.uat.devligence.com/bucket'
+else:
+    MINIO_PUBLIC_ENDPOINT = 'https://academy.kenyaflowercouncil.org/bucket'
+    
+if DEBUG:
+    FRONTEND_URL = 'https://kfc-frontend-wine.vercel.app'  # Frontend URL for development
+else:
+    FRONTEND_URL = 'https://academy.kenyaflowercouncil.org'  # Frontend URL for production
+
+# External organization API - returns org details by member_id
+ORGANIZATION_API_URL = os.environ.get('ORGANIZATION_API_URL', '')
+
+
+if DEBUG:
+    CELERY_BROKER_URL = "redis://:statusString123@localhost:6379/0"
+    CELERY_RESULT_BACKEND = "redis://:statusString123@localhost:6379/0"
+else:
+    CELERY_BROKER_URL='redis://:StrongSudo483@localhost:6379/0'
+    CELERY_RESULT_BACKEND='redis://:StrongSudo483@localhost:6379/0'
+
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = "json"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Celery Configuration
+if DEBUG:
+    CELERY_BROKER_URL = "redis://:statusString123@localhost:6379/0"
+    CELERY_RESULT_BACKEND = "redis://:statusString123@localhost:6379/0"
+else:
+    CELERY_BROKER_URL='redis://:sudoStrong123@localhost:6379/0'
+    CELERY_RESULT_BACKEND='redis://:sudoStrong123@localhost:6379/0'
+    
+# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis as the message broker
+# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Redis as the result backend
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = "json"
 
 LOGGING = {
     'version': 1,
