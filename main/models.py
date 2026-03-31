@@ -84,7 +84,7 @@ def user_upload_to(instance, filename):
 def get_default_role():
     try:
         if "role" in connection.introspection.table_names():
-            return Role.objects.get(name="USER").guid
+            return Role.objects.get(name="USER").pk
     except:
         pass
     return None
