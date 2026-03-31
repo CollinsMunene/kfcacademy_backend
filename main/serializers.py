@@ -115,6 +115,7 @@ class UserSerializer(serializers.ModelSerializer):
             field.required = field_name not in optional_fields
 
     def create(self, validated_data):
+        print("[SERIALIZER] Creating user with data:", validated_data)
         password = validated_data.pop('password', None)
         user = Users.objects.create(**validated_data) # Use objects.create for AbstractUser
         if password:

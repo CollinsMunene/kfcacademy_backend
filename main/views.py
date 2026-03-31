@@ -134,6 +134,11 @@ class UserRegister(FreeAuthView):
                     data['phone_number'] = f"254{phone_digits}"
                 else:
                     data['phone_number'] = phone_digits
+                
+            if data.get('organization'):
+                data['organization'] = str(data['organization'])
+            if data.get('role'):
+                data['role'] = str(data['role'])
 
             # 4. Serialization (The SlugRelatedFields handle the Org/Role GUID lookups)
             serializer = self.serializer_class(data=data)
