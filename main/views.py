@@ -99,115 +99,67 @@ class CurrentUser(ProtectedAuthView):
                     "data": f"An error occurred"
                 }, status=HTTP_400_BAD_REQUEST)
 
-       
+
 class UserRegister(FreeAuthView):
     serializer_class = UserSerializer
 
     def post(self, request, format=None):
         try:
-            email = request.data.get('email')
-            lowercased_email = email.lower()
-            if Users.objects.filter(email=lowercased_email).exists():
+            # 1. Pre-processing data
+            data = request.data.copy() # Work on a copy of QueryDict
+            email = data.get('email', '').lower()
+            data['email'] = email
+
+            if Users.objects.filter(email=email).exists():
                 return Response({
-                    "status": "ok",
+                    "status": "Failed",
                     "message": "User with the email already exists",
                     "data": "User with the email already exists"
                 }, status=HTTP_400_BAD_REQUEST)
-            print("org guid", request.data.get('organization'))
-            # Resolve organization_guid to org instance if provided
-            org = None
-            organization_guid = request.data.get('organization')
-            print("org guid", organization_guid)
-            if organization_guid is not None:
-                try:
-                    org = Organizations.objects.get(guid=organization_guid, deleted_at__isnull=True)
-                except Organizations.DoesNotExist:
-                    print("does not exist")
-                    return Response({
-                        "status": "Failed",
-                        "message": "Organization not found",
-                        "data": "No active organization matches the provided organization_guid"
-                    }, status=HTTP_400_BAD_REQUEST)
 
-            # Username & password generation
-            username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
-            request.data['username'] = username
-            request.data['is_first_time_login'] = True
+            # 2. Logic for Username and formatting
+            first_name = data.get('first_name', '').strip().title()
+            last_name = data.get('last_name', '').strip().title()
+            data['first_name'] = first_name
+            data['last_name'] = last_name
+            data['username'] = f"{first_name}_{last_name}{random.randint(1000, 9999)}".replace(" ", "")
+            data['is_first_time_login'] = True
 
-            request.data['first_name'] = request.data['first_name'].lower().title()
-            request.data['last_name'] = request.data['last_name'].lower().title()
-
-            if 'phone_number' in request.data:
-                phone = str(request.data['phone_number'])
-                # Keep only digits
-                phone_digits = re.sub(r'\D', '', phone)
-                print("phone digits", phone_digits)
-
-                if not phone_digits:  # invalid phone
-                    request.data['phone_number'] = None
-                elif phone_digits.startswith('0'):
-                    request.data['phone_number'] = f"254{phone_digits[1:]}"
-                elif phone_digits.startswith('254'):
-                    request.data['phone_number'] = phone_digits
+            # 3. Phone Number formatting
+            if 'phone_number' in data and data['phone_number']:
+                phone_digits = re.sub(r'\D', '', str(data['phone_number']))
+                if phone_digits.startswith('0'):
+                    data['phone_number'] = f"254{phone_digits[1:]}"
+                elif not phone_digits.startswith('254'):
+                    data['phone_number'] = f"254{phone_digits}"
                 else:
-                    request.data['phone_number'] = f"254{phone_digits}"
-            
-            print("phone number", request.data.get('phone_number'))
+                    data['phone_number'] = phone_digits
 
-            if 'organization' in request.data and request.data['organization']:
-                request.data['organization'] = Organizations.objects.get(
-                    guid=request.data['organization'], deleted_at__isnull=True
-                )
-            if 'role' in request.data and request.data['role']:
-                request.data['role'] = Role.objects.get(guid=request.data['role'])
-
-            print("role", request.data.get('role'))
-            print("organization", request.data.get('organization'))
-            
-            print(request.data)
-            serializer = UserSerializer(data=request.data)
+            # 4. Serialization (The SlugRelatedFields handle the Org/Role GUID lookups)
+            serializer = self.serializer_class(data=data)
             if serializer.is_valid():
-                user = serializer.save(created_by="self", username=username)
+                user = serializer.save(created_by="self")
 
-                # Link organization if provided
-                if org:
-                    user.organization = org
-                    user.save(update_fields=['organization'])
+                # 5. Image Generation
+                user_initials = (first_name[0] if first_name else "U") + (last_name[0] if last_name else "X")
+                image_file = self.create_profile_image(user_initials)
+                user.image.save(f"{user_initials}.jpg", image_file, save=True)
 
-                # Generate profile image
-                # user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                # image = self.create_profile_image(user_initials)
-                # img_name = f"{user_initials}.jpg"
-                # user.image.save(img_name, InMemoryUploadedFile(
-                #     image,
-                #     None,
-                #     img_name,
-                #     'image/jpeg',
-                #     image.tell,
-                #     None
-                # ))
-
-                # if user.role_id not in [2, 4]: 
-                # Email message
-                message1 = f"You have been added to the KFC Academy Platform."
-                message2 = "Your initial login credentials are as below. You will be required to change this on login."
-                message3 = "Welcome to the team."
-                link = 'https://academy.kenyaflowercouncil.org/login'
-
+                # 6. Async Email
                 send_email.delay(
-                    subject=f"Congratulations! Welcome to KFC Academy Platform",
+                    subject="Congratulations! Welcome to KFC Academy Platform",
                     context={
-                        "user": request.data.get('first_name'),
+                        "user": first_name,
                         "org": "KFC Academy",
-                        "message1": message1,
-                        "message2": message2,
-                        "message3": message3,
-                        "username": request.data.get('email'),
-                        "password": '<PASSWORD YOU SET>',
-                        "link": link
+                        "message1": "You have been added to the KFC Academy Platform.",
+                        "message2": "Your initial login credentials are below.",
+                        "message3": "Welcome to the team.",
+                        "username": email,
+                        "password": data.get('password'), # Note: Send the raw password from request
+                        "link": 'https://academy.kenyaflowercouncil.org/login'
                     },
                     template='welcome_email.html',
-                    to_email=request.data.get('email')
+                    to_email=email
                 )
 
                 return Response({
@@ -218,33 +170,180 @@ class UserRegister(FreeAuthView):
 
             return Response({
                 "status": "Failed",
-                "message": "Account not created",
+                "message": "Validation Error",
                 "data": serializer.errors
             }, status=HTTP_400_BAD_REQUEST)
 
         except Exception as e:
             return Response({
                 "status": "Failed",
-                "message": "Account not created",
+                "message": "Internal Server Error",
                 "data": str(e)
             }, status=HTTP_400_BAD_REQUEST)
 
     def create_profile_image(self, user_initials):
         N = 500
         img = Image.new('RGB', (N, N), color=(255, 255, 255))
-
-        font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
-        font = ImageFont.truetype(font_path, 350)
-
+        # Ensure path is correct for your environment
+        font_path = os.path.join(BASE_DIR, "static/MontserratBlack.ttf") 
+        try:
+            font = ImageFont.truetype(font_path, 350)
+        except:
+            font = ImageFont.load_default()
+            
         draw = ImageDraw.Draw(img)
         _, _, text_width, text_height = draw.textbbox((0, 0), text=user_initials, font=font)
-        x = (N - text_width) / 2
-        y = (N - text_height) / 2
-        draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
-
+        draw.text(((N - text_width) / 2, (N - text_height) / 2), user_initials, font=font, fill=(116, 27, 71))
+        
         buffer = BytesIO()
-        img.save(fp=buffer, format='JPEG')
+        img.save(buffer, format='JPEG')
         return ContentFile(buffer.getvalue())
+      
+# class UserRegister(FreeAuthView):
+#     serializer_class = UserSerializer
+
+#     def post(self, request, format=None):
+#         try:
+#             email = request.data.get('email')
+#             lowercased_email = email.lower()
+#             if Users.objects.filter(email=lowercased_email).exists():
+#                 return Response({
+#                     "status": "ok",
+#                     "message": "User with the email already exists",
+#                     "data": "User with the email already exists"
+#                 }, status=HTTP_400_BAD_REQUEST)
+#             print("org guid", request.data.get('organization'))
+#             # Resolve organization_guid to org instance if provided
+#             org = None
+#             organization_guid = request.data.get('organization')
+#             print("org guid", organization_guid)
+#             if organization_guid is not None:
+#                 try:
+#                     org = Organizations.objects.get(guid=organization_guid, deleted_at__isnull=True)
+#                 except Organizations.DoesNotExist:
+#                     print("does not exist")
+#                     return Response({
+#                         "status": "Failed",
+#                         "message": "Organization not found",
+#                         "data": "No active organization matches the provided organization_guid"
+#                     }, status=HTTP_400_BAD_REQUEST)
+
+#             # Username & password generation
+#             username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
+#             request.data['username'] = username
+#             request.data['is_first_time_login'] = True
+
+#             request.data['first_name'] = request.data['first_name'].lower().title()
+#             request.data['last_name'] = request.data['last_name'].lower().title()
+
+#             if 'phone_number' in request.data:
+#                 phone = str(request.data['phone_number'])
+#                 # Keep only digits
+#                 phone_digits = re.sub(r'\D', '', phone)
+#                 print("phone digits", phone_digits)
+
+#                 if not phone_digits:  # invalid phone
+#                     request.data['phone_number'] = None
+#                 elif phone_digits.startswith('0'):
+#                     request.data['phone_number'] = f"254{phone_digits[1:]}"
+#                 elif phone_digits.startswith('254'):
+#                     request.data['phone_number'] = phone_digits
+#                 else:
+#                     request.data['phone_number'] = f"254{phone_digits}"
+            
+#             print("phone number", request.data.get('phone_number'))
+
+#             if 'organization' in request.data and request.data['organization']:
+#                 request.data['organization'] = Organizations.objects.get(
+#                     guid=request.data['organization'], deleted_at__isnull=True
+#                 )
+#             if 'role' in request.data and request.data['role']:
+#                 request.data['role'] = Role.objects.get(guid=request.data['role'])
+
+#             print("role", request.data.get('role'))
+#             print("organization", request.data.get('organization'))
+            
+#             print(request.data)
+#             serializer = UserSerializer(data=request.data)
+#             if serializer.is_valid():
+#                 user = serializer.save(created_by="self", username=username)
+
+#                 # Link organization if provided
+#                 # if org:
+#                 #     user.organization = org
+#                 #     user.save(update_fields=['organization'])
+
+#                 # Generate profile image
+#                 user_initials = request.data['first_name'][0] + request.data['last_name'][0]
+#                 image = self.create_profile_image(user_initials)
+#                 img_name = f"{user_initials}.jpg"
+#                 user.image.save(img_name, InMemoryUploadedFile(
+#                     image,
+#                     None,
+#                     img_name,
+#                     'image/jpeg',
+#                     image.tell,
+#                     None
+#                 ))
+
+#                 # if user.role_id not in [2, 4]: 
+#                 # Email message
+#                 message1 = f"You have been added to the KFC Academy Platform."
+#                 message2 = "Your initial login credentials are as below. You will be required to change this on login."
+#                 message3 = "Welcome to the team."
+#                 link = 'https://academy.kenyaflowercouncil.org/login'
+
+#                 send_email.delay(
+#                     subject=f"Congratulations! Welcome to KFC Academy Platform",
+#                     context={
+#                         "user": request.data.get('first_name'),
+#                         "org": "KFC Academy",
+#                         "message1": message1,
+#                         "message2": message2,
+#                         "message3": message3,
+#                         "username": request.data.get('email'),
+#                         "password": '<PASSWORD YOU SET>',
+#                         "link": link
+#                     },
+#                     template='welcome_email.html',
+#                     to_email=request.data.get('email')
+#                 )
+
+#                 return Response({
+#                     "status": "ok",
+#                     "message": "Account Created Successfully",
+#                     "data": "Account Created Successfully"
+#                 }, status=HTTP_200_OK)
+
+#             return Response({
+#                 "status": "Failed",
+#                 "message": "Account not created",
+#                 "data": serializer.errors
+#             }, status=HTTP_400_BAD_REQUEST)
+
+#         except Exception as e:
+#             return Response({
+#                 "status": "Failed",
+#                 "message": "Account not created",
+#                 "data": str(e)
+#             }, status=HTTP_400_BAD_REQUEST)
+
+#     def create_profile_image(self, user_initials):
+#         N = 500
+#         img = Image.new('RGB', (N, N), color=(255, 255, 255))
+
+#         font_path = os.path.join(BASE_DIR, "KFCAcademy/" + STATIC_URL + 'MontserratBlack.ttf')
+#         font = ImageFont.truetype(font_path, 350)
+
+#         draw = ImageDraw.Draw(img)
+#         _, _, text_width, text_height = draw.textbbox((0, 0), text=user_initials, font=font)
+#         x = (N - text_width) / 2
+#         y = (N - text_height) / 2
+#         draw.text((x, y), user_initials, font=font, fill=(116, 27, 71))
+
+#         buffer = BytesIO()
+#         img.save(fp=buffer, format='JPEG')
+#         return ContentFile(buffer.getvalue())
     
 class AdminCreateUser(ProtectedAuthView):
     serializer_class = UserSerializer

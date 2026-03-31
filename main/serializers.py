@@ -77,12 +77,16 @@ class OrganizationsSerializer(serializers.ModelSerializer):
                 field.required = True
 
 class UserSerializer(serializers.ModelSerializer):
-    # Accept model instances directly
-    role = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(), required=False, allow_null=True
+    # This automatically looks up the object by its GUID and assigns the ID to the foreign key
+    role = serializers.SlugRelatedField(
+        queryset=Role.objects.all(), 
+        slug_field='guid', 
+        required=False, 
+        allow_null=True
     )
-    organization = serializers.PrimaryKeyRelatedField(
+    organization = serializers.SlugRelatedField(
         queryset=Organizations.objects.filter(deleted_at__isnull=True),
+        slug_field='guid',
         required=False,
         allow_null=True
     )
@@ -91,7 +95,7 @@ class UserSerializer(serializers.ModelSerializer):
         model = Users
         fields = (
             'guid', 'image', 'email', 'first_name', 'last_name',
-            'phone_number', 'bio', 'password', 'role', 'is_active','organization',
+            'phone_number', 'bio', 'password', 'role', 'is_active', 'organization',
             'is_first_time_login', 'created_at', 'created_by',
             'updated_at', 'updated_by'
         )
@@ -101,45 +105,38 @@ class UserSerializer(serializers.ModelSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # Set fields to optional dynamically
+        optional_fields = {
+            'created_by', 'created_at', 'deleted_at', 'deleted_by', 
+            'updated_by', 'updated_at', 'phone_number', 'image', 
+            'role', 'bio', 'organization'
+        }
         for field_name, field in self.fields.items():
-            if field_name in (
-                'created_by','created_at','deleted_at','deleted_by','updated_by',
-                'updated_at','phone_number','image','role','bio',"organization"
-            ):
-                field.required = False
-            else:
-                field.required = True
+            field.required = field_name not in optional_fields
 
     def create(self, validated_data):
         password = validated_data.pop('password', None)
-        user = Users(**validated_data)
+        user = Users.objects.create(**validated_data) # Use objects.create for AbstractUser
         if password:
             user.set_password(password)
-        user.save()
+            user.save()
         return user
 
     def to_representation(self, instance):
-        """Return role and organization details instead of just IDs"""
         data = super().to_representation(instance)
-        if instance.role:
-            data['role'] = {
-                'guid': str(instance.role.guid),
-                'name': instance.role.name
-            }
-        else:
-            data['role'] = None
+        data['role'] = {
+            'guid': str(instance.role.guid),
+            'name': instance.role.name
+        } if instance.role else None
         
-        if instance.organization:
-            data['organization'] = {
-                'guid': str(instance.organization.guid),
-                'org_name': instance.organization.org_name,
-                'is_active': instance.organization.is_active,
-                'member_id': instance.organization.member_id,
-            }
-        else:
-            data['organization'] = None
+        data['organization'] = {
+            'guid': str(instance.organization.guid),
+            'org_name': instance.organization.org_name,
+            'is_active': instance.organization.is_active,
+            'member_id': instance.organization.member_id,
+        } if instance.organization else None
         return data
-    
+     
 # class UserSerializer(serializers.ModelSerializer):
 #     role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 #     organization = serializers.CharField(required=False, allow_null=True, allow_blank=True)
