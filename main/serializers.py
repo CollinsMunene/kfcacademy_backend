@@ -77,72 +77,39 @@ class OrganizationsSerializer(serializers.ModelSerializer):
                 field.required = True
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(required=False, allow_null=True, allow_blank=True,to_field='guid')
-    organization = serializers.CharField(required=False, allow_null=True, allow_blank=True,to_field='guid')
-    
+    # Accept model instances directly
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(), required=False, allow_null=True
+    )
+    organization = serializers.PrimaryKeyRelatedField(
+        queryset=Organizations.objects.filter(deleted_at__isnull=True),
+        required=False,
+        allow_null=True
+    )
+
     class Meta:
         model = Users
         fields = (
             'guid', 'image', 'email', 'first_name', 'last_name',
-            'phone_number', 'bio','password', 'role', 'is_active','organization',
+            'phone_number', 'bio', 'password', 'role', 'is_active','organization',
             'is_first_time_login', 'created_at', 'created_by',
             'updated_at', 'updated_by'
         )
         extra_kwargs = {
             'password': {'write_only': True},
         }
-    
-    def validate_email(self, value):
-        """Validate email format and uniqueness"""
-        if value:
-            # Check email format (basic validation, Django already does most)
-            if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', value):
-                raise serializers.ValidationError("Invalid email format")
-            
-            # Check uniqueness (excluding current instance if updating)
-            queryset = Users.objects.filter(email=value)
-            if self.instance:
-                queryset = queryset.exclude(guid=self.instance.guid)
-            if queryset.exists():
-                raise serializers.ValidationError("Email already exists")
-        
-        return value
-    
-    def validate_role(self, value):
-        """Validate role field - convert UUID string to Role instance"""
-        if value is None or value == '':
-            return None
-
-        try:
-            # Try to get the role by its GUID
-            role = Role.objects.get(guid=value)
-            return role
-        except Role.DoesNotExist:
-            raise serializers.ValidationError("Role with the provided GUID does not exist")
-        except ValueError:
-            raise serializers.ValidationError("Invalid UUID format for role")
-
-    def validate_organization(self, value):
-        """Validate organization field - convert UUID string to Organizations instance"""
-        if value is None or value == '':
-            return None
-
-        try:
-            org = Organizations.objects.get(guid=value, deleted_at__isnull=True)
-            return org
-        except Organizations.DoesNotExist:
-            raise serializers.ValidationError("Organization with the provided GUID does not exist")
-        except ValueError:
-            raise serializers.ValidationError("Invalid UUID format for organization")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field_name, field in self.fields.items():
-            if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at','phone_number','image','role','bio',"organization"):
+            if field_name in (
+                'created_by','created_at','deleted_at','deleted_by','updated_by',
+                'updated_at','phone_number','image','role','bio',"organization"
+            ):
                 field.required = False
-            else: 
+            else:
                 field.required = True
-            
+
     def create(self, validated_data):
         password = validated_data.pop('password', None)
         user = Users(**validated_data)
@@ -152,7 +119,7 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
     def to_representation(self, instance):
-        """Override to return role GUID and name instead of role ID"""
+        """Return role and organization details instead of just IDs"""
         data = super().to_representation(instance)
         if instance.role:
             data['role'] = {
@@ -172,6 +139,103 @@ class UserSerializer(serializers.ModelSerializer):
         else:
             data['organization'] = None
         return data
+    
+# class UserSerializer(serializers.ModelSerializer):
+#     role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+#     organization = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    
+#     class Meta:
+#         model = Users
+#         fields = (
+#             'guid', 'image', 'email', 'first_name', 'last_name',
+#             'phone_number', 'bio','password', 'role', 'is_active','organization',
+#             'is_first_time_login', 'created_at', 'created_by',
+#             'updated_at', 'updated_by'
+#         )
+#         extra_kwargs = {
+#             'password': {'write_only': True},
+#         }
+    
+#     def validate_email(self, value):
+#         """Validate email format and uniqueness"""
+#         if value:
+#             # Check email format (basic validation, Django already does most)
+#             if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', value):
+#                 raise serializers.ValidationError("Invalid email format")
+            
+#             # Check uniqueness (excluding current instance if updating)
+#             queryset = Users.objects.filter(email=value)
+#             if self.instance:
+#                 queryset = queryset.exclude(guid=self.instance.guid)
+#             if queryset.exists():
+#                 raise serializers.ValidationError("Email already exists")
+        
+#         return value
+    
+#     def validate_role(self, value):
+#         """Validate role field - convert UUID string to Role instance"""
+#         if value is None or value == '':
+#             return None
+
+#         try:
+#             # Try to get the role by its GUID
+#             role = Role.objects.get(guid=value)
+#             return role
+#         except Role.DoesNotExist:
+#             raise serializers.ValidationError("Role with the provided GUID does not exist")
+#         except ValueError:
+#             raise serializers.ValidationError("Invalid UUID format for role")
+
+#     def validate_organization(self, value):
+#         """Validate organization field - convert UUID string to Organizations instance"""
+#         if value is None or value == '':
+#             return None
+
+#         try:
+#             org = Organizations.objects.get(guid=value, deleted_at__isnull=True)
+#             return org
+#         except Organizations.DoesNotExist:
+#             raise serializers.ValidationError("Organization with the provided GUID does not exist")
+#         except ValueError:
+#             raise serializers.ValidationError("Invalid UUID format for organization")
+
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         for field_name, field in self.fields.items():
+#             if field_name in('created_by','created_at','deleted_at','deleted_by','updated_by','updated_at','phone_number','image','role','bio',"organization"):
+#                 field.required = False
+#             else: 
+#                 field.required = True
+            
+#     def create(self, validated_data):
+#         password = validated_data.pop('password', None)
+#         user = Users(**validated_data)
+#         if password:
+#             user.set_password(password)
+#         user.save()
+#         return user
+
+#     def to_representation(self, instance):
+#         """Override to return role GUID and name instead of role ID"""
+#         data = super().to_representation(instance)
+#         if instance.role:
+#             data['role'] = {
+#                 'guid': str(instance.role.guid),
+#                 'name': instance.role.name
+#             }
+#         else:
+#             data['role'] = None
+        
+#         if instance.organization:
+#             data['organization'] = {
+#                 'guid': str(instance.organization.guid),
+#                 'org_name': instance.organization.org_name,
+#                 'is_active': instance.organization.is_active,
+#                 'member_id': instance.organization.member_id,
+#             }
+#         else:
+#             data['organization'] = None
+#         return data
 
 class CourseModuleSerializer(serializers.ModelSerializer):
     course = serializers.UUIDField(write_only=True, help_text="Course GUID - required for creation")
