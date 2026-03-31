@@ -175,17 +175,17 @@ class UserRegister(FreeAuthView):
                     user.save(update_fields=['organization'])
 
                 # Generate profile image
-                user_initials = request.data['first_name'][0] + request.data['last_name'][0]
-                image = self.create_profile_image(user_initials)
-                img_name = f"{user_initials}.jpg"
-                user.image.save(img_name, InMemoryUploadedFile(
-                    image,
-                    None,
-                    img_name,
-                    'image/jpeg',
-                    image.tell,
-                    None
-                ))
+                # user_initials = request.data['first_name'][0] + request.data['last_name'][0]
+                # image = self.create_profile_image(user_initials)
+                # img_name = f"{user_initials}.jpg"
+                # user.image.save(img_name, InMemoryUploadedFile(
+                #     image,
+                #     None,
+                #     img_name,
+                #     'image/jpeg',
+                #     image.tell,
+                #     None
+                # ))
 
                 # if user.role_id not in [2, 4]: 
                 # Email message
