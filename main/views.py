@@ -150,6 +150,12 @@ class UserRegister(FreeAuthView):
                     request.data['phone_number'] = phone_digits
                 else:
                     request.data['phone_number'] = f"254{phone_digits}"
+            
+  
+            if 'role' in request.data and request.data['role']:
+                request.data['role'] = Role.objects.get(guid=request.data['role'])
+            if 'organization' in request.data and request.data['organization']:
+                request.data['organization'] = Organizations.objects.get(guid=request.data['organization'])
 
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
