@@ -77,8 +77,8 @@ class OrganizationsSerializer(serializers.ModelSerializer):
                 field.required = True
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    organization = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    role = serializers.CharField(required=False, allow_null=True, allow_blank=True,to_field='guid')
+    organization = serializers.CharField(required=False, allow_null=True, allow_blank=True,to_field='guid')
     
     class Meta:
         model = Users
