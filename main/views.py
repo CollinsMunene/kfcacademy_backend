@@ -6,6 +6,7 @@ import requests
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from rest_framework import request
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_400_BAD_REQUEST, HTTP_201_CREATED, HTTP_204_NO_CONTENT, HTTP_200_OK,HTTP_404_NOT_FOUND,HTTP_401_UNAUTHORIZED,HTTP_403_FORBIDDEN)
@@ -112,14 +113,16 @@ class UserRegister(FreeAuthView):
                     "message": "User with the email already exists",
                     "data": "User with the email already exists"
                 }, status=HTTP_400_BAD_REQUEST)
-
+            print("org guid", request.data.get('organization'))
             # Resolve organization_guid to org instance if provided
             org = None
             organization_guid = request.data.get('organization')
-            if organization_guid:
+            print("org guid", organization_guid)
+            if organization_guid is not None:
                 try:
                     org = Organizations.objects.get(guid=organization_guid, deleted_at__isnull=True)
                 except Organizations.DoesNotExist:
+                    print("does not exist")
                     return Response({
                         "status": "Failed",
                         "message": "Organization not found",
