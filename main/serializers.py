@@ -77,14 +77,8 @@ class OrganizationsSerializer(serializers.ModelSerializer):
                 field.required = True
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.all(), required=False, allow_null=True
-    )
-    organization = serializers.PrimaryKeyRelatedField(
-        queryset=Organizations.objects.filter(deleted_at__isnull=True),
-        required=False,
-        allow_null=True
-    )
+    role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    organization = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     
     class Meta:
         model = Users
@@ -112,15 +106,6 @@ class UserSerializer(serializers.ModelSerializer):
             if queryset.exists():
                 raise serializers.ValidationError("Email already exists")
         
-        return value
-    
-    def validate_phone_number(self, value):
-        """Validate phone number format"""
-        if value:
-            # Basic phone number validation
-            cleaned = re.sub(r'[^\d+]', '', value)
-            if not re.match(r'^\+?[\d\s\-\(\)]{7,15}$', value):
-                raise serializers.ValidationError("Invalid phone number format")
         return value
     
     def validate_role(self, value):

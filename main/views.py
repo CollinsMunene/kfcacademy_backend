@@ -141,6 +141,7 @@ class UserRegister(FreeAuthView):
                 phone = str(request.data['phone_number'])
                 # Keep only digits
                 phone_digits = re.sub(r'\D', '', phone)
+                print("phone digits", phone_digits)
 
                 if not phone_digits:  # invalid phone
                     request.data['phone_number'] = None
@@ -151,12 +152,15 @@ class UserRegister(FreeAuthView):
                 else:
                     request.data['phone_number'] = f"254{phone_digits}"
             
-  
+            print("phone number", request.data.get('phone_number'))
             if 'role' in request.data and request.data['role']:
                 request.data['role'] = Role.objects.get(guid=request.data['role'])
             if 'organization' in request.data and request.data['organization']:
                 request.data['organization'] = Organizations.objects.get(guid=request.data['organization'])
 
+            print("role", request.data.get('role'))
+            print("organization", request.data.get('organization'))
+            print(request.data)
             serializer = UserSerializer(data=request.data)
             if serializer.is_valid():
                 user = serializer.save(created_by="self", username=username)
