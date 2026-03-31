@@ -77,8 +77,14 @@ class OrganizationsSerializer(serializers.ModelSerializer):
                 field.required = True
 
 class UserSerializer(serializers.ModelSerializer):
-    role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
-    organization = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    role = serializers.PrimaryKeyRelatedField(
+        queryset=Role.objects.all(), required=False, allow_null=True
+    )
+    organization = serializers.PrimaryKeyRelatedField(
+        queryset=Organizations.objects.filter(deleted_at__isnull=True),
+        required=False,
+        allow_null=True
+    )
     
     class Meta:
         model = Users
