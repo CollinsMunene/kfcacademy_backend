@@ -14,7 +14,6 @@ import resend
 
 resend.api_key ="re_Lko7WyQ6_6EnuGTQEsrXm7CaAHBC4Z2fy"
 
-
 # Setup Jinja2 environment (once globally)
 jinja_env = Environment(loader=FileSystemLoader("templates/email"))
 
