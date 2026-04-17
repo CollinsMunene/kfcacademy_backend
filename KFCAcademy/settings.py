@@ -348,7 +348,7 @@ else:
     FRONTEND_URL = 'https://academy.kenyaflowercouncil.org'  # Frontend URL for production
 
 # External organization API - returns org details by member_id
-ORGANIZATION_API_URL = os.environ.get('ORGANIZATION_API_URL', '')
+ORGANIZATION_API_URL = os.environ.get('ORGANIZATION_API_URL', 'https://api.membership.kenyaflowercouncil.org/external/validate_member_email')
 
 
 if DEBUG:

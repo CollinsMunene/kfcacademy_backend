@@ -398,42 +398,51 @@ class SyncOrganization(FreeAuthView):
 
     def post(self, request, format=None):
         member_id = request.data.get('member_id')
+        email = request.data.get('email')
         if not member_id:
             return Response({
                 "status": "Failed",
-                "message": "member_id is required",
-                "data": "member_id is required"
+                "message": "KFC Number is required",
+                "data": "KFC Number is required"
             }, status=HTTP_400_BAD_REQUEST)
 
-        # org_api_url = settings.ORGANIZATION_API_URL
-        # if not org_api_url:
-        #     return Response({
-        #         "status": "Failed",
-        #         "message": "Organization API URL is not configured",
-        #         "data": "ORGANIZATION_API_URL setting is missing"
-        #     }, status=HTTP_400_BAD_REQUEST)
+        org_api_url = settings.ORGANIZATION_API_URL
+        if not org_api_url:
+            return Response({
+                "status": "Failed",
+                "message": "Organization API URL is not configured",
+                "data": "ORGANIZATION_API_URL setting is missing"
+            }, status=HTTP_400_BAD_REQUEST)
 
         # # Fetch organization details from external API
-        # try:
-        #     resp = requests.get(f"{org_api_url}/{member_id}", timeout=30)
-        #     resp.raise_for_status()
-        #     org_data = resp.json()
-        # except requests.exceptions.RequestException as e:
-        #     return Response({
-        #         "status": "Failed",
-        #         "message": "Failed to fetch organization details from external API",
-        #         "data": str(e)
-        #     }, status=HTTP_400_BAD_REQUEST)
-        org_data = {
-            "org_name":"Devligence",
-            "address":"TWX",
-            "email":"info@devligence.com"
-        }
-
+        try:
+            resp = requests.post(f"{org_api_url}", json={"kfc_no": member_id,"primary_email":email}, timeout=30)
+            resp.raise_for_status()
+            org_data = resp.json()
+        except requests.exceptions.RequestException as e:
+            return Response({
+                "status": "Failed",
+                "message": "Failed to fetch organization details from external API",
+                "data": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
+        
+        # {
+        #     "status": true,
+        #     "detail": "User credentials successfully validated",
+        #     "member_name": "Lorem Ipsum Roses",
+        #     "kfc_no": "KFC-002"
+        # }
+        if org_data.get('status') != True or 'kfc_no' not in org_data:
+            return Response({
+                "status": "Failed",
+                "message": "External API did not return valid organization data",
+                "data": org_data
+            }, status=HTTP_400_BAD_REQUEST)
+        
         # Map external API response to our model fields
-        org_name = org_data.get('org_name') or org_data.get('name')
+        org_name = org_data.get('member_name')
         address = org_data.get('address', '')
-        contact_email = org_data.get('email') or org_data.get('contact_email')
+
 
         if not org_name:
             return Response({
@@ -444,7 +453,7 @@ class SyncOrganization(FreeAuthView):
 
         # Create or update organization
         org, created = Organizations.objects.get_or_create(
-            member_id=member_id,
+            member_id=org_data.get('kfc_no'),
             defaults={
                 'org_name': org_name,
                 'address': address,
@@ -456,22 +465,33 @@ class SyncOrganization(FreeAuthView):
             org.address = address
             org.is_active = True
             org.save()
+        
+        random_id = random.randint(1000, 9999)
+
+        # store the random id and the organization to a short lived cache on redis with a TTL of 1 hour. This will be used to validate the registration link when the user clicks on it and to fetch the org details for pre-filling the registration form.
+        from django.core.cache import cache
+        cache.set(str(random_id), {
+            "org_guid": str(org.guid),
+            "kfc_no": org.member_id,
+            "org_name": org_name,
+        }, timeout=3600)  # 1 hour TTL
 
         # Build the registration link with org guid
-        frontend_link = f"{settings.FRONTEND_URL}/sign-up?org={org.guid}"
+        frontend_link = f"{settings.FRONTEND_URL}/sign-up?org={org.guid}#{random_id}"
+
 
         # Send email to org contact if an email is available
-        if contact_email:
+        if email:
             send_email.delay(
-                subject="Your Organization Has Been Registered on KFC Academy",
+                subject="Your Organization Has Been Confirmed on KFC Academy",
                 context={
                     "user": org_name,
-                    "message1": f"Your organization '{org_name}' has been successfully registered on the KFC Academy Platform.",
+                    "message1": f"Your organization '{org_name}' has been successfully confirmed on the KFC Academy Platform.",
                     "message2": "Click the button below to complete your team's registration using your organization link.",
                     "link": frontend_link,
                 },
                 template='email_with_button.html',
-                to_email=contact_email
+                to_email=email
             )
 
         return Response({
@@ -481,7 +501,6 @@ class SyncOrganization(FreeAuthView):
                 "guid": str(org.guid),
                 "member_id": org.member_id,
                 "org_name": org.org_name,
-                "address": org.address,
                 "is_active": org.is_active,
                 "registration_link": frontend_link,
                 "created": created,
