@@ -13,7 +13,6 @@ app.autodiscover_tasks()
 # app.conf.enable_utc = False
 # app.conf.timezone = 'Africa/Nairobi'
 
-
 if settings.DEBUG:
     broker_url = "redis://:statusString123@localhost:6379/0"
     app.conf.timezone = 'Africa/Nairobi'

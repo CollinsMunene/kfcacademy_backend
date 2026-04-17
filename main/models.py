@@ -1,6 +1,7 @@
 from datetime import timedelta
+from django.forms import ValidationError
 from django.utils import timezone
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 from io import BytesIO
@@ -83,10 +84,29 @@ def user_upload_to(instance, filename):
 def get_default_role():
     try:
         if "role" in connection.introspection.table_names():
-            return Role.objects.get(name="USER")
+            return Role.objects.get(name="USER").guid
     except:
         pass
     return None
+
+class Organizations(models.Model):
+    guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
+    member_id = models.CharField(max_length=40, null=False,blank=False)
+    org_name = models.CharField(max_length=100,null=False,blank=False)
+    address = models.CharField(max_length=100,null=True,blank=True)
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.CharField(max_length=200,blank=True,null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.CharField(max_length=200,blank=True,null=True)
+    deleted_at = models.DateTimeField(blank=True,null=True)
+    deleted_by = models.CharField(max_length=200,blank=True,null=True)
+
+    class Meta:
+        db_table = 'organizations'
+    
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
 
 
 class Users(AbstractUser):
@@ -99,13 +119,12 @@ class Users(AbstractUser):
     last_name = models.CharField(max_length=40, unique=False, default='',blank=True)
     phone_number = models.CharField(max_length = 20,blank=True,null=True)
     profession = models.CharField(max_length=200,blank=True,null=True)
-    gender = models.CharField(max_length=20,blank=True,null=True)
-    age = models.IntegerField(blank=True,null=True)
     bio = models.TextField(blank=True,null=True)
     password = models.CharField(max_length=300, blank=False, null=False)
     is_active = models.BooleanField(default=True)
     is_first_time_login = models.BooleanField(default=True)
     role = models.ForeignKey(Role,on_delete=models.SET_DEFAULT, default=get_default_role,blank=True,null=True)
+    organization =  models.ForeignKey(Organizations,on_delete=models.SET_NULL,blank=True,null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.CharField(max_length=200,blank=True,null=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -160,7 +179,6 @@ class Users(AbstractUser):
             
             # Validate file size (max 10MB)
             if self.image.size > 10 * 1024 * 1024:
-                print(f"Image too large: {self.image.size} bytes")
                 return
 
             im = Image.open(self.image)
@@ -194,7 +212,8 @@ class Courses(models.Model):
     title = models.CharField(max_length=200,blank=False,null=False)
     description = models.TextField(blank=True,null=True)
     category = models.CharField(max_length=200,blank=True,null=True)
-    image = models.ImageField(default='course_image/default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
+    # image = models.ImageField(default='default_course.png', blank=True, null=True, upload_to=course_image_upload_to)
+    image = models.CharField(max_length=300, blank=True, null=True)
     tags = ArrayField(models.CharField(max_length=100), blank=True, default=list)
     expertise_level = models.CharField(max_length=100,blank=True,null=True)
     prerequisites = ArrayField(models.CharField(max_length=100), blank=True, default=list)
@@ -203,6 +222,12 @@ class Courses(models.Model):
     amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     currency = models.CharField(max_length=10,blank=True,null=True)
     isFeatured = models.BooleanField(default=False)
+
+    learning_mode = models.CharField(max_length=10,blank=True,null=True)
+    venue = models.CharField(max_length=50,blank=True,null=True)
+    training_date = models.DateTimeField(blank=True,null=True)
+
+    order = models.IntegerField(blank=True,null=True, default=0)
     instructor = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.SET_NULL,blank=True,null=True,related_name='instructor')
     status = models.CharField(max_length=200,blank=False,null=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -241,9 +266,6 @@ class Courses(models.Model):
             total=Sum('moduletopics__duration')
         )['total']
 
-        # Debugging log
-        print(f"Debug: Aggregated total_duration for course {self.guid}: {total_duration}")
-
         if not total_duration:
             result = "0h"
         else:
@@ -264,33 +286,82 @@ class Courses(models.Model):
             result = " ".join(parts) or "0h"
 
         # Cache for 1 hour
-        cache.set(cache_key, result, 3600)
+        cache.set(cache_key, result, 2)
         return result
     
+    # def course_progress(self, user):
+    #     """Return average module progress for this user."""
+    #     from django.core.cache import cache
+        
+    #     # Use caching for user progress
+    #     cache_key = f"course_progress_{self.guid}_{user.guid}"
+    #     cached_progress = cache.get(cache_key)
+    #     if cached_progress is not None:
+    #         return cached_progress
+
+    #     modules = self.coursemodules_set.all()
+    #     if not modules:
+    #         return 0
+
+    #     total = 0
+    #     for module in modules:
+    #         total += module.module_progress(user)
+        
+    #     result = round(total / modules.count(), 2)
+        
+    #     # Cache for 10 minutes (progress changes frequently)
+    #     cache.set(cache_key, result, 600)
+    #     return result
     def course_progress(self, user):
-        """Return average module progress for this user."""
-        from django.core.cache import cache
-        
-        # Use caching for user progress
-        cache_key = f"course_progress_{self.guid}_{user.guid}"
-        cached_progress = cache.get(cache_key)
-        if cached_progress is not None:
-            return cached_progress
+        """
+        Content-weighted course progress:
+        (completed topics + correct quiz answers) / (total topics + total questions)
+        """
 
-        modules = self.coursemodules_set.all()
-        if not modules:
-            return 0
 
-        total = 0
-        for module in modules:
-            total += module.module_progress(user)
-        
-        result = round(total / modules.count(), 2)
-        
-        # Cache for 10 minutes (progress changes frequently)
-        cache.set(cache_key, result, 600)
-        return result
+        total_topics = ModuleTopics.objects.filter(
+            module__course=self,
+            deleted_at__isnull=True
+        ).count()
 
+        total_questions = QuizQuestions.objects.filter(
+            quiz__module__course=self
+        ).count()
+
+        total_units = total_topics + total_questions
+
+        if total_units == 0:
+            return 100.0 
+
+      
+        progress_records = UserModuleProgress.objects.filter(
+            user=user,
+            module__course=self
+        )
+
+       
+        valid_topic_ids = set(
+            ModuleTopics.objects.filter(
+                module__course=self,
+                deleted_at__isnull=True
+            ).values_list('guid', flat=True)
+        )
+
+        completed_topics = 0
+        for record in progress_records:
+            completed_topics += len(
+                [tid for tid in (record.topics_completed or []) if tid in valid_topic_ids]
+            )
+        
+        completed_questions = QuizResponses.objects.filter(
+            user=user,
+            question__quiz__module__course=self
+        ).values("question").distinct().count()
+
+        completed_units = completed_topics + completed_questions
+
+        return round((completed_units / total_units) * 100, 2)
+    
     def save(self, *args, **kwargs):
         from django.core.cache import cache
         # Invalidate duration cache when course is updated
@@ -323,11 +394,19 @@ class CourseModules(models.Model):
     
     def module_progress(self, user):
         """Return module progress (0-100%) for a given user."""
+        # Check if module actually has trackable content
+        has_topics = self.moduletopics_set.filter(deleted_at__isnull=True).exists()
+        has_questions = QuizQuestions.objects.filter(quiz__module=self).exists()
+
+        # If module has no content, it should not block course completion
+        if not has_topics and not has_questions:
+            return 100.0
+
         try:
             user_progress = UserModuleProgress.objects.get(user=user, module=self)
-            return user_progress.progress  # property in UserModuleProgress
+            return user_progress.progress
         except UserModuleProgress.DoesNotExist:
-            return 0
+            return 0.0
 
 
 class ModuleTopics(models.Model):
@@ -340,9 +419,12 @@ class ModuleTopics(models.Model):
     videos_description =  models.TextField(blank=True,null=True)
     images = ArrayField(models.CharField(max_length=300,blank=True),default=list,blank = True,null = True)
     images_description =  models.TextField(blank=True,null=True)
+    audio = ArrayField(models.CharField(max_length=300,blank=True),default=list,blank = True,null = True)
+    audio_description =  models.TextField(blank=True,null=True)
+    resource_order = ArrayField(models.IntegerField(), default=list, blank=True)
     duration = models.DurationField(help_text="Enter duration as HH:MM:SS",blank = True,null = True)
     module = models.ForeignKey(CourseModules,on_delete=models.CASCADE)
-    order = models.IntegerField(blank=False,null=False)
+    topic_order = models.IntegerField(blank=True,null=True, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.CharField(max_length=200,blank=True,null=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -354,7 +436,7 @@ class ModuleTopics(models.Model):
     class Meta:
         db_table = 'module_topics'
         indexes = [
-            models.Index(fields=['module', 'order']),
+            models.Index(fields=['module', 'topic_order']),
             models.Index(fields=['name']),
         ]
 
@@ -370,7 +452,21 @@ class ModuleQuizes(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     name = models.CharField(max_length=200,blank=False,null=False)
     description = models.TextField(blank=True,null=True)
-    module = models.ForeignKey(CourseModules,on_delete=models.CASCADE)
+    module = models.ForeignKey(
+        CourseModules,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="quizzes"
+    )
+
+    course = models.ForeignKey(
+        Courses,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="quizzes"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.CharField(max_length=200,blank=True,null=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -383,6 +479,10 @@ class ModuleQuizes(models.Model):
     
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+    
+    def clean(self):
+        if not self.module and not self.course:
+            raise ValidationError("Quiz must belong to either a module or a course.")
 
 
 class QuizQuestions(models.Model):
@@ -448,14 +548,23 @@ class QuizResponses(models.Model):
 
         try:
             # Fixed: Correct relationship path quiz -> module
+            # progress, created = UserModuleProgress.objects.get_or_create(
+            #     user=self.user,
+            #     module=self.question.quiz.module
+            # )
+            # progress.update_quiz_progress()
+            transaction.on_commit(lambda: self.update_user_module_progress())
+        except Exception as e:
+            # Optional: log
+            print(f"Error updating module progress: {e}")
+
+    def update_user_module_progress(self):
+            """Update the user's module progress."""
             progress, created = UserModuleProgress.objects.get_or_create(
                 user=self.user,
                 module=self.question.quiz.module
             )
             progress.update_quiz_progress()
-        except Exception as e:
-            # Optional: log
-            print(f"Error updating module progress: {e}")
 
     def __str__(self):
         return f"{self.question.question_text[:30]}"
@@ -516,6 +625,7 @@ class UserModuleProgress(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     module = models.ForeignKey(CourseModules, on_delete=models.CASCADE)
+    progress = models.FloatField(default=0.0) 
     topics_completed = ArrayField(
         models.UUIDField(), blank=True, default=list
     )
@@ -540,49 +650,41 @@ class UserModuleProgress(models.Model):
         cache.delete(cache_key)
     
     def update_quiz_progress(self):
-        """
-        Checks if user has answered all quiz questions for this module,
-        and marks quiz_completed = True if so.
-        """
-        # Fixed: Correct relationship path through quiz, include deleted_at filter
+        """Update progress based on quiz responses for this module."""
+        # Total questions in this module
         total_questions = QuizQuestions.objects.filter(
-            quiz__module=self.module, 
-            deleted_at__isnull=True
+            quiz__module=self.module
         ).count()
-        answered_questions = QuizResponses.objects.filter(
+
+        if total_questions == 0:
+            self.progress = 100.0
+            self.save()
+            return
+
+        # Correct answers submitted by this user in this module
+        correct_answers = QuizResponses.objects.filter(
             user=self.user,
             question__quiz__module=self.module,
-            deleted_at__isnull=True
+            is_correct=True
         ).count()
-        print(f"Total questions: {total_questions}, Answered questions: {answered_questions}")
-        print(f"Current quiz_completed status: {self.quiz_completed}")
 
-        if total_questions > 0 and answered_questions >= total_questions:
-            print(f"Setting quiz_completed to True for user {self.user.email}")
-            self.quiz_completed = True
-            self.completed_at = self.completed_at or timezone.now()
-            self.save(update_fields=['quiz_completed', 'completed_at'])
-            print(f"Quiz completed status after save: {self.quiz_completed}")
+        self.progress = (correct_answers / total_questions) * 100.0
+        self.save()
+
+    def update_topic_progress(self):
+        """Calculate progress based on topics completed vs total topics."""
+        total_topics = self.module.moduletopics_set.filter(deleted_at__isnull=True).count()
+        if total_topics == 0:
+            self.progress = 100.0
         else:
-            print(f"Quiz not completed yet. Need {total_questions} answers, have {answered_questions}")
+            self.progress = (len(self.topics_completed) / total_topics) * 100.0
+        self.save()  
     
     @property
     def topics_completed_guids(self):
         """Return list of completed topic GUIDs"""
         return self.topics_completed or []
     
-    @property
-    def progress(self):
-        total_topics = self.module.moduletopics_set.count()
-        if total_topics == 0:
-            topic_percent = 0
-        else:
-            topic_percent = len(self.topics_completed_guids) / total_topics
-
-        quiz_percent = 1 if self.quiz_completed else 0
-
-        # Weighted example: 70% topics, 30% quiz
-        return round((topic_percent * 0.7 + quiz_percent * 0.3) * 100, 2)
 
 class UsersCourseEnrollment(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
@@ -603,6 +705,29 @@ class UsersCourseEnrollment(models.Model):
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
 
+class CourseInteractions(models.Model): 
+    guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
+    course = models.ForeignKey(
+        Courses,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    rating = models.IntegerField(null=True, blank=True)
+    review_text = models.CharField(max_length=200,blank=True,null=True)
+    interaction_type = models.CharField(max_length=50,blank=False,null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        db_table = 'course_interaction'
+        unique_together = ('user', 'course','interaction_type')
+        indexes = [
+            models.Index(fields=['course', 'interaction_type']),
+            models.Index(fields=['user', 'interaction_type']),
+        ]
+
+
 class Main2FALog(models.Model): 
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL,on_delete=models.CASCADE)
@@ -621,6 +746,7 @@ class Main2FALog(models.Model):
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
+
 
 class ActionLogs(models.Model):
     guid = models.UUIDField(default=uuid.uuid4, editable=False,unique=True)

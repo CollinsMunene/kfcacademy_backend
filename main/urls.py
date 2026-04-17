@@ -4,12 +4,16 @@ from . import views
 
 app_name = 'main'
 
-
 urlpatterns = [
+    # User
+    # Organization
+    re_path(r'^organization/sync/$', views.SyncOrganization.as_view(), name='sync_organization'),
+
     # User
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),
     re_path(r'^user/register/$', views.UserRegister.as_view(), name='user_register'),
     re_path(r'^user/by_guid/(?P<guid>[\w-]+)/$', views.OneUser.as_view(), name='one_user'),
+    re_path(r'^user/by_org/(?P<guid>[\w-]+)/$', views.OrgUsers.as_view(), name='one_user'),
     re_path(r'^user/admin_create/$', views.AdminCreateUser.as_view(), name='admin_create_user'),
     re_path(r'^user/admin_reactivate/$', views.AdminReactivateUser.as_view(), name='admin_reactivate_user'),
     re_path(r'^user/update_image/(?P<guid>[\w-]+)/$', views.UpdateUserProfileImage.as_view(), name='update_user_image'),
@@ -72,6 +76,7 @@ urlpatterns = [
     # Module Quizzes
     re_path(r'^quizzes/$', views.AllModuleQuizzes.as_view(), name='all_quizzes'),
     re_path(r'^modules/(?P<module_guid>[\w-]+)/quizzes/$', views.AllModuleQuizzes.as_view(), name='module_quizzes'),
+    re_path(r'^final_assessment/(?P<course_guid>[\w-]+)/course/$', views.FinalAssessQuizzes.as_view(), name='final_assess_quizzes'),
     re_path(r'^quizzes/create/$', views.CreateModuleQuiz.as_view(), name='create_quiz'),
     re_path(r'^quizzes/(?P<guid>[\w-]+)/$', views.OneModuleQuiz.as_view(), name='one_quiz'),
     re_path(r'^quizzes/(?P<guid>[\w-]+)/update/$', views.UpdateModuleQuiz.as_view(), name='update_quiz'),
@@ -98,9 +103,15 @@ urlpatterns = [
     re_path(r'^courses/(?P<course_guid>[\w-]+)/progress/$', views.CourseProgress.as_view(), name='course_progress'),
     re_path(r'^topic/complete/$', views.MarkTopicComplete.as_view(), name='mark_topic_complete'),
     
+    re_path(r'^interactions/create/$', views.CourseInteractView.as_view(), name='create_course_interactions'),
+    re_path(r'^interactions/(?P<interaction_guid>[\w-]+)/delete/$', views.DeleteCourseReviewView.as_view(), name='delete_course_interactions'),   
+    re_path(r'^interactions/(?P<course_guid>[\w-]+)/all/$', views.CourseInteractions.as_view(), name='course_interactions'),
+
+    re_path(r'^courses/(?P<course_guid>[\w-]+)/certificate/$', views.CourseCertificate.as_view(), name='course_certificate'),
     # Quiz Responses
     re_path(r'^quiz/submit/$', views.SubmitQuizResponse.as_view(), name='submit_quiz_response'),
     re_path(r'^quizzes/(?P<quiz_guid>[\w-]+)/results/$', views.GetQuizResults.as_view(), name='quiz_results'),
+
 
     # =============================================================================
     # PUBLIC/BROWSE URLS
@@ -132,6 +143,10 @@ urlpatterns = [
     re_path(r'^discussions/(?P<guid>[\w-]+)/$', views.OneCourseDiscussion.as_view(), name='one_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/update/$', views.UpdateCourseDiscussion.as_view(), name='update_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/delete/$', views.DeleteCourseDiscussion.as_view(), name='delete_discussion'),
+
+    # File Management
+    re_path(r'^file/upload/$', views.UploadCourseResources.as_view(), name='upload_course_resource'),
+    re_path(r'^file/delete/$', views.DeleteCourseResources.as_view(), name='upload_course_resource'),
 
 
 ]

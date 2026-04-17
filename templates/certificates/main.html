@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Environment Sustainability Certificate - SUNFLORITECH-RUMURUTI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .certificate-container {
+            width: 800px;
+            background: white;
+            border: 15px solid #ddab06;
+            padding: 50px;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            border-bottom: 2px solid #2e7d32;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kfc-logo {
+            font-weight: bold;
+            color: #2e7d32;
+            text-transform: uppercase;
+        }
+
+        .registration-details {
+            font-size: 12px;
+            text-align: right;
+        }
+
+        .main-title {
+            text-align: center;
+            color: #b8860b;
+            font-size: 42px;
+            margin: 20px 0;
+            text-transform: uppercase;
+        }
+
+        .award-subtitle {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 40px;
+        }
+
+        .recipient-name {
+            text-align: center;
+            font-size: 32px;
+            text-decoration: underline;
+            color: #cf1397;
+            margin: 20px 0;
+        }
+
+        .location {
+            text-align: center;
+            font-style: italic;
+            margin-bottom: 30px;
+        }
+
+        .content-body {
+            text-align: center;
+            line-height: 1.6;
+            margin: 0 40px;
+        }
+
+        .footer {
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        .signature-block {
+            text-align: center;
+        }
+
+        .signature-line {
+            border-top: 1px solid #000;
+            width: 200px;
+            margin-bottom: 5px;
+        }
+
+        .contact-info {
+            font-size: 10px;
+            color: #777;
+            margin-top: 40px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="certificate-container">
+        <div class="header">
+            <div class="kfc-logo">
+                Kenya Flower Council<br>
+                <span style="font-size: 12px;">Academy</span>
+            </div>
+            <div class="registration-details">
+                KFC Reg No: C. 73573
+            </div>
+        </div>
+
+        <h1 class="main-title">Digital Certificate</h1>
+
+        <p class="award-subtitle">
+            Awarded for <span id="course-name-header">{{title}}</span>
+        </p>
+
+        <div class="recipient-name">{{candidate}}</div>
+
+        <div class="content-body">
+            This Digital Certificate is awarded in recognition of the successful completion of
+            <span id="course-name-body"></span> and commitment to professional learning.<br>
+            <!-- This Certificate is issued in accordance with the Certification Scheme Quality System Regulations. -->
+        </div>
+
+        <div class="footer">
+            <div class="signature-block">
+                <div class="signature-line"></div>
+                <strong>Mr. Clement Tulezi</strong><br>
+                CHIEF EXECUTIVE
+            </div>
+            <div style="text-align: right; font-size: 14px;">
+                <strong>Date of Issue:</strong>{{completion_date}}<span id="issue-date"></span><br>
+                <small>Verify at: www.kenyaflowercouncil.org</small>
+            </div>
+        </div>
+
+        <div class="contact-info">
+            Off Ngong Road, 1st left gate, Miotoni Road, Karen | P.O. BOX 56325-00200 Nairobi, Kenya
+        </div>
+    </div>
+
+</body>
+
+</html>
