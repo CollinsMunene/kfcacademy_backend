@@ -94,13 +94,14 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = Users
         fields = (
-            'guid', 'image', 'email', 'first_name', 'last_name',
+            'guid', 'image','username', 'email', 'first_name', 'last_name',
             'phone_number', 'bio', 'password', 'role', 'is_active', 'organization',
             'is_first_time_login', 'created_at', 'created_by',
             'updated_at', 'updated_by'
         )
         extra_kwargs = {
             'password': {'write_only': True},
+            'username': {'write_only': True},
         }
 
     def __init__(self, *args, **kwargs):
@@ -117,7 +118,7 @@ class UserSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         print("[SERIALIZER] Creating user with data:", validated_data)
         password = validated_data.pop('password', None)
-        user = Users.objects.create(**validated_data) # Use objects.create for AbstractUser
+        user = Users.objects.create_user(**validated_data) # Use objects.create for AbstractUser
         if password:
             user.set_password(password)
             user.save()
