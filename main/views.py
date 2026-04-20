@@ -537,7 +537,21 @@ class SyncOrganization(FreeAuthView):
 
         # # Fetch organization details from external API
         try:
-            resp = requests.post(f"{org_api_url}", json={"kfc_no": member_id,"primary_email":email}, timeout=30)
+            headers = {
+                "X-API-Key": "f0b68a47bd429d7a11d59fbace17a4beba595429749302a594d0617652aca0f4",
+                "Content-Type": "application/json"
+            }
+
+            resp = requests.post(
+                org_api_url,
+                json={
+                    "kfc_no": member_id,
+                    "primary_email": email
+                },
+                headers=headers,
+                timeout=30
+            )
+
             resp.raise_for_status()
             org_data = resp.json()
         except requests.exceptions.RequestException as e:
