@@ -14,7 +14,6 @@ import resend
 
 resend.api_key ="re_Lko7WyQ6_6EnuGTQEsrXm7CaAHBC4Z2fy"
 
-
 # Setup Jinja2 environment (once globally)
 jinja_env = Environment(loader=FileSystemLoader("templates/email"))
 @app.task(bind=True, max_retries=3, default_retry_delay=60)  # Retry up to 3 times with a 60-second delay between retries
