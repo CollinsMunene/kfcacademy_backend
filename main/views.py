@@ -41,6 +41,7 @@ from django.db.models import Avg, Count
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 from weasyprint import HTML
+import uuid
 
 # Create your views here.
 
@@ -122,7 +123,7 @@ class UserRegister(FreeAuthView):
             last_name = data.get('last_name', '').strip().title()
             data['first_name'] = first_name
             data['last_name'] = last_name
-            data['username'] = f"{first_name}_{last_name}{random.randint(1000, 9999)}".replace(" ", "")
+            data['username'] = f"{request.data['first_name']}_{uuid.uuid4().hex[:6]}"
             data['is_first_time_login'] = True
 
             # 3. Phone Number formatting
@@ -539,7 +540,8 @@ class SyncOrganization(FreeAuthView):
         try:
             headers = {
                 "X-API-Key": "f0b68a47bd429d7a11d59fbace17a4beba595429749302a594d0617652aca0f4",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "Accept": "application/json"
             }
 
             resp = requests.post(
