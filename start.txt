@@ -38,6 +38,19 @@ INSERT INTO role (
     'admin',
     '2025-02-24T12:00:00Z'
 );
+INSERT INTO role (
+    guid,
+    name,
+    created_at,
+    created_by,
+    updated_at
+) VALUES (
+    '51a6fe9a-cb6a-4140-83fe-ba64cbe562f2',
+    'ORG_ADMIN',
+    '2025-02-24T12:00:00Z',
+    'admin',
+    '2025-02-24T12:00:00Z'
+);
 
 # TODO: Add Permission
 INSERT INTO permission (

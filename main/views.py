@@ -138,6 +138,7 @@ class UserRegister(FreeAuthView):
                 
             if data.get('organization'):
                 data['organization'] = str(data['organization'])
+                data['role'] = Role.objects.get(name="ORG_ADMIN").guid
             if data.get('role'):
                 data['role'] = str(data['role'])
 
