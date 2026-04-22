@@ -615,7 +615,7 @@ class SyncOrganization(FreeAuthView):
         }, timeout=3600)  # 1 hour TTL
 
         # Build the registration link with org guid
-        frontend_link = f"{settings.FRONTEND_URL}/sign-up?org={org.guid}#{random_id}"
+        frontend_link = f"{settings.FRONTEND_URL}/sign-up?org={org.guid}&opt_in={random_id}"
 
 
         # Send email to org contact if an email is available
