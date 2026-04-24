@@ -606,6 +606,7 @@ class SyncOrganization(FreeAuthView):
         
         random_id = random.randint(1000, 9999)
 
+
         # store the random id and the organization to a short lived cache on redis with a TTL of 1 hour. This will be used to validate the registration link when the user clicks on it and to fetch the org details for pre-filling the registration form.
         from django.core.cache import cache
         cache.set(str(random_id), {
