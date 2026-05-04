@@ -3297,7 +3297,7 @@ class GlobalStatistics(FreeAuthView):
             total_courses = Courses.objects.filter(deleted_at__isnull=True).count()
             total_enrollments = UsersCourseEnrollment.objects.filter(deleted_at__isnull=True).count()
             total_users = Users.objects.filter(deleted_at__isnull=True).count()
-            total_trainers = Users.objects.filter(role='trainer', deleted_at__isnull=True).count()
+            total_trainers = Users.objects.filter(role__name='INSTRUCTOR', deleted_at__isnull=True).count()
             
             # Calculate average module progress across all users and courses
             enrollments = UsersCourseEnrollment.objects.filter(deleted_at__isnull=True)
