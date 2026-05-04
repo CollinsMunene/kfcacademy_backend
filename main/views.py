@@ -3264,5 +3264,69 @@ class FileHandlerGet(ProtectedAuthView):
                 "data":  f"{e}"
             }, status=HTTP_400_BAD_REQUEST)
 
-
-
+def calculate_user_course_progress(user, course):
+    try:
+        total_modules = CourseModules.objects.filter(course=course, deleted_at__isnull=True).count()
+        if total_modules == 0:
+            return 0
+        
+        completed_modules = UserModuleProgress.objects.filter(
+            user=user,
+            module__course=course,
+            progress=100
+        ).count()
+        
+        progress_percentage = (completed_modules / total_modules) * 100
+        return progress_percentage
+    
+    except Exception as e:
+        # Log the error
+        # logger.exception(
+        #     e.__str__(),
+        #     extra={
+        #         "view": f"calculate_user_course_progress | DEBUG: {settings.DEBUG}",
+        #         "line": e.__traceback__.tb_lineno,
+        #     }
+        # )
+        return 0
+    
+class GlobalStatistics(FreeAuthView):
+    # general stats on total courses, total enrollments, totoal users, total trainers, average module progress for all users.
+    def get(self, request, format=None):
+        try:
+            total_courses = Courses.objects.filter(deleted_at__isnull=True).count()
+            total_enrollments = UsersCourseEnrollment.objects.filter(deleted_at__isnull=True).count()
+            total_users = Users.objects.filter(deleted_at__isnull=True).count()
+            total_trainers = Users.objects.filter(role='trainer', deleted_at__isnull=True).count()
+            
+            # Calculate average module progress across all users and courses
+            enrollments = UsersCourseEnrollment.objects.filter(deleted_at__isnull=True)
+            total_progress = 0
+            count = 0
+            
+            for enrollment in enrollments:
+                progress = calculate_user_course_progress(enrollment.user, enrollment.course)
+                if progress is not None:
+                    total_progress += progress
+                    count += 1
+            
+            average_progress = (total_progress / count) if count > 0 else 0
+            
+            return Response({
+                "status": "OK",
+                "message": "Global statistics retrieved successfully",
+                "data": {
+                    "total_courses": total_courses,
+                    "total_enrollments": total_enrollments,
+                    "total_users": total_users,
+                    "total_trainers": total_trainers,
+                    "average_module_progress_percentage": round(average_progress, 2)
+                }
+            }, status=HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({
+                "status": "Failed",
+                "message": "Error retrieving global statistics",
+                "data": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
