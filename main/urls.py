@@ -141,7 +141,7 @@ urlpatterns = [
     re_path(r'^courses/(?P<course_guid>[\w-]+)/discussions/$', views.AllCourseDiscussions.as_view(), name='course_discussions'),
     re_path(r'^discussions/create/$', views.CreateCourseDiscussion.as_view(), name='create_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/$', views.OneCourseDiscussion.as_view(), name='one_discussion'),
-    re_path(r'^discussions/(?P<guid>[\w- ]+)/update/$', views.UpdateCourseDiscussion.as_view(), name='update_discussion'),
+    re_path(r'^discussions/(?P<guid>[\w-]+)/update/$', views.UpdateCourseDiscussion.as_view(), name='update_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/delete/$', views.DeleteCourseDiscussion.as_view(), name='delete_discussion'),
 
     # File Management
