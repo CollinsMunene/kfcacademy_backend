@@ -8,6 +8,8 @@ urlpatterns = [
     # User
     # Organization
     re_path(r'^organization/sync/$', views.SyncOrganization.as_view(), name='sync_organization'),
+    re_path(r'^organization/all/$', views.AllOrganizations.as_view(), name='all_organizations'),
+    re_path(r'^organization/all/users/', views.AllOrganizationUsers.as_view(), name='all_organization_users'),
 
     # User
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),

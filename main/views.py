@@ -507,6 +507,35 @@ class SyncOrganization(FreeAuthView):
             }
         }, status=HTTP_201_CREATED if created else HTTP_200_OK)
 
+class AllOrganizations(ProtectedAuthView):
+    serializer_class = FilePathSerializer
+    filter_backends = []
+    def get(self,request,format=None):
+        """
+        Get all organizations
+        """
+        all_orgs = Organizations.objects.filter(deleted_at__isnull=True)
+        serializer = FilePathSerializer(all_orgs,many=True)
+        return Response(serializer.data,status=HTTP_200_OK)
+    
+class AllOrganizationUsers(ProtectedAuthView):
+    serializer_class = UserSerializer
+    filter_backends = []
+    def get(self,request,format=None):
+        """
+        Get all users in an organization
+        """
+        org_guid = request.user.organization.guid if request.user.organization else None
+        if not org_guid:
+            return Response({
+                "status": "Failed",
+                "message": "Organization guid is required as a query parameter",
+                "data": "Organization guid is required as a query parameter"
+            }, status=HTTP_400_BAD_REQUEST)
+
+        all_users = Users.objects.filter(organization__guid=org_guid, deleted_at__isnull=True)
+        serializer = UserSerializer(all_users,many=True)
+        return Response(serializer.data,status=HTTP_200_OK)
 
 class UpdateUserProfileImage(ProtectedAuthView):
     parser_classes = (MultiPartParser, FormParser)
