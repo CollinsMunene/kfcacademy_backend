@@ -8,6 +8,8 @@ urlpatterns = [
     # User
     # Organization
     re_path(r'^organization/sync/$', views.SyncOrganization.as_view(), name='sync_organization'),
+    re_path(r'^organization/all/$', views.AllOrganizations.as_view(), name='all_organizations'),
+    re_path(r'^organization/all/users/', views.AllOrganizationUsers.as_view(), name='all_organization_users'),
 
     # User
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),
@@ -141,7 +143,7 @@ urlpatterns = [
     re_path(r'^courses/(?P<course_guid>[\w-]+)/discussions/$', views.AllCourseDiscussions.as_view(), name='course_discussions'),
     re_path(r'^discussions/create/$', views.CreateCourseDiscussion.as_view(), name='create_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/$', views.OneCourseDiscussion.as_view(), name='one_discussion'),
-    re_path(r'^discussions/(?P<guid>[\w- ]+)/update/$', views.UpdateCourseDiscussion.as_view(), name='update_discussion'),
+    re_path(r'^discussions/(?P<guid>[\w-]+)/update/$', views.UpdateCourseDiscussion.as_view(), name='update_discussion'),
     re_path(r'^discussions/(?P<guid>[\w-]+)/delete/$', views.DeleteCourseDiscussion.as_view(), name='delete_discussion'),
 
     # File Management

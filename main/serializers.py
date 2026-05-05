@@ -1237,7 +1237,7 @@ class PublicCourseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Courses
         fields = [
-            'guid', 'title', 'description', 'image', 'tags', 'expertise_level',
+            'guid', 'title', 'description', 'image', 'tags', 'expertise_level','category',
             'isPaid', 'amount', 'currency', 'isFeatured', 'instructor_name', 
             'instructor_image', 'total_duration','created_at', 'updated_at','learning_mode','venue','training_date','course_iteractions',
         ]
