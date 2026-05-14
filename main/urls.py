@@ -114,7 +114,6 @@ urlpatterns = [
     re_path(r'^quiz/submit/$', views.SubmitQuizResponse.as_view(), name='submit_quiz_response'),
     re_path(r'^quizzes/(?P<quiz_guid>[\w-]+)/results/$', views.GetQuizResults.as_view(), name='quiz_results'),
 
-
     # =============================================================================
     # PUBLIC/BROWSE URLS
     # =============================================================================
