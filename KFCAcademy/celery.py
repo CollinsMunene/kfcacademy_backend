@@ -14,7 +14,7 @@ app.autodiscover_tasks()
 # app.conf.timezone = 'Africa/Nairobi'
 
 if settings.DEBUG:
-    broker_url = "redis://:statusString123@localhost:6379/0"
+    broker_url = "redis://:statusString123@127.0.0.1:6379/0"
     app.conf.timezone = 'Africa/Nairobi'
     app.conf.enable_utc = True
     app.conf.task_routes = {
@@ -22,7 +22,7 @@ if settings.DEBUG:
     }
     app.conf.task_default_queue = 'kfc_queue'
 else:
-    broker_url='redis://:StrongSudo483@localhost:6379/0'
+    broker_url='redis://:StrongSudo483@127.0.0.1:6379/0'
     
 app.conf.update(
     broker_url=broker_url,
