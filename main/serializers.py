@@ -138,6 +138,22 @@ class UserSerializer(serializers.ModelSerializer):
             'member_id': instance.organization.member_id,
         } if instance.organization else None
         return data
+
+
+class OrganizationBulkEnrollmentSerializer(serializers.Serializer):
+    user_guids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False
+    )
+    course_guids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False
+    )
+
+    def validate(self, attrs):
+        attrs['user_guids'] = list(dict.fromkeys(attrs['user_guids']))
+        attrs['course_guids'] = list(dict.fromkeys(attrs['course_guids']))
+        return attrs
      
 # class UserSerializer(serializers.ModelSerializer):
 #     role = serializers.CharField(required=False, allow_null=True, allow_blank=True)
@@ -1692,4 +1708,3 @@ class FilePathSerializer(serializers.Serializer):
     file_path = serializers.CharField(
         help_text="Path of the file for generating a presigned URL."
     )
-

@@ -33,6 +33,7 @@ from main.serializers import (
     QuizQuestionsSerializer, ModuleTopicSerializer, ModuleQuizSerializer,
     QuizResponseSerializer, CourseEnrollmentSerializer, UserProgressSerializer,
     PublicCourseSerializer, CourseDiscussionSerializer, TopicCompletionSerializer,
+    OrganizationBulkEnrollmentSerializer,
     EnrolledCourseSerializer, UnenrollmentSerializer, QuizSubmissionFeedbackSerializer
 )
 from main.signals import log_soft_delete
@@ -675,6 +676,164 @@ class AllOrganizationUsers(ProtectedAuthView):
         all_users = Users.objects.filter(organization__guid=org_guid, deleted_at__isnull=True)
         serializer = UserSerializer(all_users,many=True)
         return Response(serializer.data,status=HTTP_200_OK)
+
+
+class OrganizationBulkEnrollUsers(ProtectedAuthView):
+    serializer_class = OrganizationBulkEnrollmentSerializer
+    allowed_role_names = {"ORG_ADMIN"}
+
+    def post(self, request, format=None):
+        """
+        Bulk enroll users from the requester's organization into one or more courses.
+        """
+        try:
+            organization = getattr(request.user, 'organization', None)
+            role_name = getattr(getattr(request.user, 'role', None), 'name', None)
+
+            if organization is None:
+                return Response({
+                    "status": "Failed",
+                    "message": "Only organization users can bulk enroll learners",
+                    "data": "Requesting user is not attached to an organization"
+                }, status=HTTP_403_FORBIDDEN)
+
+            if role_name not in self.allowed_role_names:
+                return Response({
+                    "status": "Failed",
+                    "message": "Only organization admins can bulk enroll learners",
+                    "data": "Requesting user does not have permission to bulk enroll learners"
+                }, status=HTTP_403_FORBIDDEN)
+
+            serializer = self.serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
+
+            user_guids = serializer.validated_data['user_guids']
+            course_guids = serializer.validated_data['course_guids']
+
+            organization_users = Users.objects.filter(
+                guid__in=user_guids,
+                organization=organization,
+                deleted_at__isnull=True,
+                is_active=True
+            ).select_related('organization')
+            users_by_guid = {user.guid: user for user in organization_users}
+
+            courses = Courses.objects.filter(
+                guid__in=course_guids,
+                deleted_at__isnull=True
+            )
+            courses_by_guid = {course.guid: course for course in courses}
+
+            invalid_user_guids = [
+                str(user_guid) for user_guid in user_guids if user_guid not in users_by_guid
+            ]
+            invalid_course_guids = [
+                str(course_guid) for course_guid in course_guids if course_guid not in courses_by_guid
+            ]
+
+            if not users_by_guid:
+                return Response({
+                    "status": "Failed",
+                    "message": "No eligible organization users were found",
+                    "data": {
+                        "invalid_user_guids": invalid_user_guids,
+                        "invalid_course_guids": invalid_course_guids,
+                    }
+                }, status=HTTP_400_BAD_REQUEST)
+
+            if not courses_by_guid:
+                return Response({
+                    "status": "Failed",
+                    "message": "No valid courses were found",
+                    "data": {
+                        "invalid_user_guids": invalid_user_guids,
+                        "invalid_course_guids": invalid_course_guids,
+                    }
+                }, status=HTTP_400_BAD_REQUEST)
+
+            results = []
+            created_count = 0
+            reactivated_count = 0
+            already_enrolled_count = 0
+
+            for user_guid in user_guids:
+                user = users_by_guid.get(user_guid)
+                if not user:
+                    continue
+
+                for course_guid in course_guids:
+                    course = courses_by_guid.get(course_guid)
+                    if not course:
+                        continue
+
+                    enrollment = UsersCourseEnrollment.objects.filter(
+                        user=user,
+                        course=course
+                    ).first()
+
+                    if enrollment and enrollment.deleted_at is None:
+                        operation = "already_enrolled"
+                        already_enrolled_count += 1
+                    elif enrollment:
+                        enrollment.deleted_at = None
+                        enrollment.deleted_by = None
+                        enrollment.updated_by = str(request.user.guid)
+                        enrollment.save()
+                        operation = "reactivated"
+                        reactivated_count += 1
+                    else:
+                        enrollment = UsersCourseEnrollment.objects.create(
+                            user=user,
+                            course=course,
+                            created_by=str(request.user.guid)
+                        )
+                        operation = "created"
+                        created_count += 1
+
+                    results.append({
+                        "user_guid": str(user.guid),
+                        "user_email": user.email,
+                        "course_guid": str(course.guid),
+                        "course_title": course.title,
+                        "enrollment_guid": str(enrollment.guid),
+                        "status": operation,
+                    })
+
+            ActionLogs.objects.create(
+                initiator_id=request.user,
+                action='organization bulk course enrollment',
+                extra_details={
+                    "organization_guid": str(organization.guid),
+                    "requested_user_guids": [str(user_guid) for user_guid in user_guids],
+                    "requested_course_guids": [str(course_guid) for course_guid in course_guids],
+                    "created_count": created_count,
+                    "reactivated_count": reactivated_count,
+                    "already_enrolled_count": already_enrolled_count,
+                    "invalid_user_guids": invalid_user_guids,
+                    "invalid_course_guids": invalid_course_guids,
+                }
+            )
+
+            return Response({
+                "status": "ok",
+                "message": "Bulk enrollment processed successfully",
+                "data": {
+                    "organization_guid": str(organization.guid),
+                    "created_count": created_count,
+                    "reactivated_count": reactivated_count,
+                    "already_enrolled_count": already_enrolled_count,
+                    "invalid_user_guids": invalid_user_guids,
+                    "invalid_course_guids": invalid_course_guids,
+                    "results": results,
+                }
+            }, status=HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                "status": "Failed",
+                "message": "Bulk enrollment failed",
+                "data": str(e)
+            }, status=HTTP_400_BAD_REQUEST)
 
 class UpdateUserProfileImage(ProtectedAuthView):
     parser_classes = (MultiPartParser, FormParser)

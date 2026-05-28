@@ -10,6 +10,7 @@ urlpatterns = [
     re_path(r'^organization/sync/$', views.SyncOrganization.as_view(), name='sync_organization'),
     re_path(r'^organization/all/$', views.AllOrganizations.as_view(), name='all_organizations'),
     re_path(r'^organization/users/all/$', views.AllOrganizationUsers.as_view(), name='all_organization_users'),
+    re_path(r'^organization/enrollments/bulk/$', views.OrganizationBulkEnrollUsers.as_view(), name='organization_bulk_enroll_users'),
 
     # User
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),
@@ -113,7 +114,6 @@ urlpatterns = [
     # Quiz Responses
     re_path(r'^quiz/submit/$', views.SubmitQuizResponse.as_view(), name='submit_quiz_response'),
     re_path(r'^quizzes/(?P<quiz_guid>[\w-]+)/results/$', views.GetQuizResults.as_view(), name='quiz_results'),
-
 
     # =============================================================================
     # PUBLIC/BROWSE URLS

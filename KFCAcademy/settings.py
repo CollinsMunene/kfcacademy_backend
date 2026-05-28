@@ -352,11 +352,11 @@ ORGANIZATION_API_URL = os.environ.get('ORGANIZATION_API_URL', 'https://api.membe
 
 
 if DEBUG:
-    CELERY_BROKER_URL = "redis://:statusString123@localhost:6379/0"
-    CELERY_RESULT_BACKEND = "redis://:statusString123@localhost:6379/0"
+    CELERY_BROKER_URL = "redis://:statusString123@127.0.0.1:6379/0"
+    CELERY_RESULT_BACKEND = "redis://:statusString123@127.0.0.1:6379/0"
 else:
-    CELERY_BROKER_URL='redis://:StrongSudo483@localhost:6379/0'
-    CELERY_RESULT_BACKEND='redis://:StrongSudo483@localhost:6379/0'
+    CELERY_BROKER_URL='redis://:StrongSudo483@127.0.0.1:6379/0'
+    CELERY_RESULT_BACKEND='redis://:StrongSudo483@127.0.0.1:6379/0'
 
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
@@ -367,19 +367,6 @@ CELERY_RESULT_SERIALIZER = "json"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Celery Configuration
-if DEBUG:
-    CELERY_BROKER_URL = "redis://:statusString123@localhost:6379/0"
-    CELERY_RESULT_BACKEND = "redis://:statusString123@localhost:6379/0"
-else:
-    CELERY_BROKER_URL='redis://:sudoStrong123@localhost:6379/0'
-    CELERY_RESULT_BACKEND='redis://:sudoStrong123@localhost:6379/0'
-    
-# CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis as the message broker
-# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'  # Redis as the result backend
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = "json"
 
 LOGGING = {
     'version': 1,
