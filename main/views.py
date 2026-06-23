@@ -365,7 +365,6 @@ class AdminCreateUser(ProtectedAuthView):
                     "message": "User with the email already exists",
                     "data": "User with the email already exists"
                 }, status=HTTP_400_BAD_REQUEST)
-
             # Validate role_guid if provided
             role_guid = request.data.get('role')
             if role_guid:
@@ -379,7 +378,7 @@ class AdminCreateUser(ProtectedAuthView):
                     }, status=HTTP_400_BAD_REQUEST)
 
             # Username & password generation
-            username = f"{request.data['first_name']}_{request.data['last_name']}{random.randint(1000, 9999)}"
+            username = f"{request.data['first_name']}__{uuid.uuid4().hex[:6]}"
             request.data['username'] = username
             initial_password = ";4yGcR56O{|1"
             request.data['password'] = initial_password
