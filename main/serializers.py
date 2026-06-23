@@ -1708,3 +1708,76 @@ class FilePathSerializer(serializers.Serializer):
     file_path = serializers.CharField(
         help_text="Path of the file for generating a presigned URL."
     )
+
+
+# =============================================================================
+# ORGANIZATION ENROLLMENT SERIALIZERS
+# =============================================================================
+
+class OrgMemberEnrollmentSerializer(serializers.Serializer):
+    """Enroll a single org member in one or more courses."""
+    user_guid = serializers.UUIDField()
+    course_guids = serializers.ListField(
+        child=serializers.UUIDField(),
+        allow_empty=False
+    )
+
+    def validate(self, attrs):
+        attrs['course_guids'] = list(dict.fromkeys(attrs['course_guids']))
+        return attrs
+
+
+class OrgCourseSerializer(serializers.ModelSerializer):
+    """Course listing for an organization — includes per-course enrollment stats."""
+    enrolled_member_count = serializers.SerializerMethodField()
+    enrolled_members = serializers.SerializerMethodField()
+    instructor = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Courses
+        fields = [
+            'guid', 'title', 'description', 'expertise_level', 'isPaid',
+            'amount', 'currency', 'total_duration', 'image', 'status',
+            'learning_mode', 'venue', 'training_date',
+            'enrolled_member_count', 'enrolled_members', 'instructor',
+        ]
+
+    def get_enrolled_member_count(self, obj):
+        org = self.context.get('organization')
+        if not org:
+            return 0
+        return UsersCourseEnrollment.objects.filter(
+            course=obj,
+            user__organization=org,
+            deleted_at__isnull=True,
+            user__deleted_at__isnull=True,
+        ).count()
+
+    def get_enrolled_members(self, obj):
+        org = self.context.get('organization')
+        if not org:
+            return []
+        enrollments = UsersCourseEnrollment.objects.filter(
+            course=obj,
+            user__organization=org,
+            deleted_at__isnull=True,
+            user__deleted_at__isnull=True,
+        ).select_related('user')
+        return [
+            {
+                'guid': str(e.user.guid),
+                'first_name': e.user.first_name,
+                'last_name': e.user.last_name,
+                'email': e.user.email,
+                'enrolled_at': e.enrolled_at,
+            }
+            for e in enrollments
+        ]
+
+    def get_instructor(self, obj):
+        if obj.instructor:
+            return {
+                'name': f"{obj.instructor.first_name} {obj.instructor.last_name}",
+                'email': obj.instructor.email,
+            }
+        return None

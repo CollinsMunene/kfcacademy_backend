@@ -11,6 +11,10 @@ urlpatterns = [
     re_path(r'^organization/all/$', views.AllOrganizations.as_view(), name='all_organizations'),
     re_path(r'^organization/users/all/$', views.AllOrganizationUsers.as_view(), name='all_organization_users'),
     re_path(r'^organization/enrollments/bulk/$', views.OrganizationBulkEnrollUsers.as_view(), name='organization_bulk_enroll_users'),
+    re_path(r'^organization/courses/$', views.OrganizationCourses.as_view(), name='organization_courses'),
+    re_path(r'^organization/members/(?P<user_guid>[\w-]+)/courses/$', views.OrganizationMemberCourses.as_view(), name='organization_member_courses'),
+    re_path(r'^organization/enrollments/member/$', views.OrganizationEnrollMember.as_view(), name='organization_enroll_member'),
+    re_path(r'^organization/enrollments/member/(?P<user_guid>[\w-]+)/(?P<course_guid>[\w-]+)/$', views.OrganizationUnenrollMember.as_view(), name='organization_unenroll_member'),
 
     # User
     re_path(r'^user/all/$', views.AllUsers.as_view(), name='all_users_by_entity'),

@@ -33,7 +33,7 @@ from main.serializers import (
     QuizQuestionsSerializer, ModuleTopicSerializer, ModuleQuizSerializer,
     QuizResponseSerializer, CourseEnrollmentSerializer, UserProgressSerializer,
     PublicCourseSerializer, CourseDiscussionSerializer, TopicCompletionSerializer,
-    OrganizationBulkEnrollmentSerializer,
+    OrganizationBulkEnrollmentSerializer, OrgMemberEnrollmentSerializer, OrgCourseSerializer,
     EnrolledCourseSerializer, UnenrollmentSerializer, QuizSubmissionFeedbackSerializer
 )
 from main.signals import log_soft_delete
@@ -833,6 +833,266 @@ class OrganizationBulkEnrollUsers(ProtectedAuthView):
                 "message": "Bulk enrollment failed",
                 "data": str(e)
             }, status=HTTP_400_BAD_REQUEST)
+
+
+class OrganizationCourses(ProtectedAuthView):
+    """List all distinct courses that org members are enrolled in."""
+    allowed_role_names = {"ORG_ADMIN"}
+
+    def get(self, request, format=None):
+        organization = getattr(request.user, 'organization', None)
+        role_name = getattr(getattr(request.user, 'role', None), 'name', None)
+
+        if organization is None:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization users can access this endpoint",
+                "data": "Requesting user is not attached to an organization"
+            }, status=HTTP_403_FORBIDDEN)
+
+        if role_name not in self.allowed_role_names:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization admins can access this endpoint",
+                "data": "Requesting user does not have permission"
+            }, status=HTTP_403_FORBIDDEN)
+
+        course_ids = UsersCourseEnrollment.objects.filter(
+            user__organization=organization,
+            deleted_at__isnull=True,
+            user__deleted_at__isnull=True,
+        ).values_list('course_id', flat=True).distinct()
+
+        courses = Courses.objects.filter(
+            id__in=course_ids,
+            deleted_at__isnull=True,
+        ).select_related('instructor')
+
+        serializer = OrgCourseSerializer(courses, many=True, context={'organization': organization})
+        return Response({
+            "status": "ok",
+            "message": "Organization courses retrieved successfully",
+            "data": serializer.data,
+        }, status=HTTP_200_OK)
+
+
+class OrganizationMemberCourses(ProtectedAuthView):
+    """List courses a specific org member is enrolled in."""
+    allowed_role_names = {"ORG_ADMIN"}
+
+    def get(self, request, user_guid, format=None):
+        organization = getattr(request.user, 'organization', None)
+        role_name = getattr(getattr(request.user, 'role', None), 'name', None)
+
+        if organization is None:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization users can access this endpoint",
+                "data": "Requesting user is not attached to an organization"
+            }, status=HTTP_403_FORBIDDEN)
+
+        if role_name not in self.allowed_role_names:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization admins can access this endpoint",
+                "data": "Requesting user does not have permission"
+            }, status=HTTP_403_FORBIDDEN)
+
+        member = get_object_or_404(
+            Users,
+            guid=user_guid,
+            organization=organization,
+            deleted_at__isnull=True,
+        )
+
+        enrollments = UsersCourseEnrollment.objects.filter(
+            user=member,
+            deleted_at__isnull=True,
+        )
+        optimized = EnrolledCourseSerializer.setup_eager_loading(enrollments, user=member)
+        serializer = EnrolledCourseSerializer(optimized, many=True, context={'user': member})
+        return Response({
+            "status": "ok",
+            "message": "Member courses retrieved successfully",
+            "data": serializer.data,
+        }, status=HTTP_200_OK)
+
+
+class OrganizationEnrollMember(ProtectedAuthView):
+    """Enroll a single org member in one or more courses."""
+    serializer_class = OrgMemberEnrollmentSerializer
+    allowed_role_names = {"ORG_ADMIN"}
+
+    def post(self, request, format=None):
+        organization = getattr(request.user, 'organization', None)
+        role_name = getattr(getattr(request.user, 'role', None), 'name', None)
+
+        if organization is None:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization users can perform enrollments",
+                "data": "Requesting user is not attached to an organization"
+            }, status=HTTP_403_FORBIDDEN)
+
+        if role_name not in self.allowed_role_names:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization admins can enroll members",
+                "data": "Requesting user does not have permission"
+            }, status=HTTP_403_FORBIDDEN)
+
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user_guid = serializer.validated_data['user_guid']
+        course_guids = serializer.validated_data['course_guids']
+
+        try:
+            member = Users.objects.get(
+                guid=user_guid,
+                organization=organization,
+                deleted_at__isnull=True,
+                is_active=True,
+            )
+        except Users.DoesNotExist:
+            return Response({
+                "status": "Failed",
+                "message": "User not found in your organization",
+                "data": f"No active user with guid {user_guid} found in your organization"
+            }, status=HTTP_400_BAD_REQUEST)
+
+        courses = Courses.objects.filter(guid__in=course_guids, deleted_at__isnull=True)
+        courses_by_guid = {course.guid: course for course in courses}
+        invalid_course_guids = [str(g) for g in course_guids if g not in courses_by_guid]
+
+        results = []
+        created_count = reactivated_count = already_enrolled_count = 0
+
+        for course_guid in course_guids:
+            course = courses_by_guid.get(course_guid)
+            if not course:
+                continue
+
+            enrollment = UsersCourseEnrollment.objects.filter(user=member, course=course).first()
+
+            if enrollment and enrollment.deleted_at is None:
+                operation = "already_enrolled"
+                already_enrolled_count += 1
+            elif enrollment:
+                enrollment.deleted_at = None
+                enrollment.deleted_by = None
+                enrollment.updated_by = str(request.user.guid)
+                enrollment.save()
+                operation = "reactivated"
+                reactivated_count += 1
+            else:
+                enrollment = UsersCourseEnrollment.objects.create(
+                    user=member,
+                    course=course,
+                    created_by=str(request.user.guid),
+                )
+                operation = "created"
+                created_count += 1
+
+            results.append({
+                "course_guid": str(course.guid),
+                "course_title": course.title,
+                "enrollment_guid": str(enrollment.guid),
+                "status": operation,
+            })
+
+        ActionLogs.objects.create(
+            initiator_id=request.user,
+            action='organization member course enrollment',
+            extra_details={
+                "organization_guid": str(organization.guid),
+                "member_guid": str(member.guid),
+                "requested_course_guids": [str(g) for g in course_guids],
+                "created_count": created_count,
+                "reactivated_count": reactivated_count,
+                "already_enrolled_count": already_enrolled_count,
+                "invalid_course_guids": invalid_course_guids,
+            }
+        )
+
+        return Response({
+            "status": "ok",
+            "message": "Enrollment processed successfully",
+            "data": {
+                "member_guid": str(member.guid),
+                "member_email": member.email,
+                "created_count": created_count,
+                "reactivated_count": reactivated_count,
+                "already_enrolled_count": already_enrolled_count,
+                "invalid_course_guids": invalid_course_guids,
+                "results": results,
+            }
+        }, status=HTTP_200_OK)
+
+
+class OrganizationUnenrollMember(ProtectedAuthView):
+    """Unenroll a specific org member from a course."""
+    allowed_role_names = {"ORG_ADMIN"}
+
+    def delete(self, request, user_guid, course_guid, format=None):
+        organization = getattr(request.user, 'organization', None)
+        role_name = getattr(getattr(request.user, 'role', None), 'name', None)
+
+        if organization is None:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization users can perform unenrollments",
+                "data": "Requesting user is not attached to an organization"
+            }, status=HTTP_403_FORBIDDEN)
+
+        if role_name not in self.allowed_role_names:
+            return Response({
+                "status": "Failed",
+                "message": "Only organization admins can unenroll members",
+                "data": "Requesting user does not have permission"
+            }, status=HTTP_403_FORBIDDEN)
+
+        member = get_object_or_404(
+            Users,
+            guid=user_guid,
+            organization=organization,
+            deleted_at__isnull=True,
+        )
+        course = get_object_or_404(Courses, guid=course_guid, deleted_at__isnull=True)
+        enrollment = get_object_or_404(
+            UsersCourseEnrollment,
+            user=member,
+            course=course,
+            deleted_at__isnull=True,
+        )
+
+        enrollment.deleted_at = timezone.now()
+        enrollment.deleted_by = str(request.user.guid)
+        enrollment.save()
+
+        ActionLogs.objects.create(
+            initiator_id=request.user,
+            action='organization member course unenrollment',
+            extra_details={
+                "organization_guid": str(organization.guid),
+                "member_guid": str(member.guid),
+                "course_guid": str(course.guid),
+                "course_title": course.title,
+            }
+        )
+
+        return Response({
+            "status": "ok",
+            "message": "Successfully unenrolled member from course",
+            "data": {
+                "member_guid": str(member.guid),
+                "member_email": member.email,
+                "course_guid": str(course.guid),
+                "course_title": course.title,
+                "unenrolled_at": enrollment.deleted_at,
+            }
+        }, status=HTTP_200_OK)
+
 
 class UpdateUserProfileImage(ProtectedAuthView):
     parser_classes = (MultiPartParser, FormParser)
